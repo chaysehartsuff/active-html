@@ -1,0 +1,16 @@
+{
+    "name": "chaysehartsuff/active-html",
+    "description": "A centralized JS/PHP bridge for Eloquent models and active HTML components.",
+    "autoload": {
+        "psr-4": {
+            "ChayseHartsuff\\ActiveHtml\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "ChayseHartsuff\\ActiveHtml\\ActiveHtmlServiceProvider"
+            ]
+        }
+    }
+}

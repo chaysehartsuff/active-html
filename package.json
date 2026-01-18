@@ -1,0 +1,15 @@
+{
+  "name": "@chaysehartsuff/active-html",
+  "version": "1.0.0",
+  "description": "Active HTML Entity DAO for Laravel",
+  "main": "resources/js/index.js",
+  "type": "module",
+  "dependencies": {
+    "quill": "^2.0.0",
+    "@tailwindcss/forms": "^0.5.2",
+    "@tailwindcss/vite": "^4.0.0"
+  },
+  "peerDependencies": {
+    "tailwindcss": "^4.0.0"
+  }
+}
