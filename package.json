@@ -2,22 +2,47 @@
   "name": "@chaysehartsuff/active-html",
   "version": "1.0.0",
   "description": "Active HTML Entity DAO for Laravel",
-  "main": "resources/js/index.js",
   "type": "module",
+  "main": "./resources/js/index.js",
+  "module": "./resources/js/index.js",
   "exports": {
-    ".": "./resources/js/index.js"
+    ".": {
+      "import": "./resources/js/index.js",
+      "require": "./resources/js/index.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "resources/js",
     "src",
     "config"
   ],
+  "keywords": [
+    "laravel",
+    "active-html",
+    "dao",
+    "eloquent"
+  ],
+  "author": "Chayse Hartsuff",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chaysehartsuff/active-html.git"
+  },
   "dependencies": {
-    "quill": "^2.0.0",
-    "@tailwindcss/forms": "^0.5.2",
-    "@tailwindcss/vite": "^4.0.0"
+    "quill": "^2.0.0"
   },
   "peerDependencies": {
+    "@tailwindcss/forms": "^0.5.2",
+    "@tailwindcss/vite": "^4.0.0",
     "tailwindcss": "^3.0.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tailwindcss/forms": {
+      "optional": true
+    },
+    "@tailwindcss/vite": {
+      "optional": true
+    }
   }
 }

@@ -7,6 +7,15 @@ use Illuminate\Support\Facades\Route;
 
 class ActiveHtmlServiceProvider extends ServiceProvider
 {
+    public function register()
+    {
+        // Merge config
+        $this->mergeConfigFrom(
+            __DIR__.'/../config/active-models.php', 
+            'active-html'
+        );
+    }
+
     public function boot()
     {
         // Publish Config
@@ -15,11 +24,23 @@ class ActiveHtmlServiceProvider extends ServiceProvider
         ], 'active-html-config');
 
         // Register Routes
-        Route::post('model/{action}', [Http\Controllers\ModelController::class, 'index']);
+        $this->registerRoutes();
     }
 
-    public function register()
+    /**
+     * Register package routes
+     * Compatible with Laravel 10, 11, and 12
+     */
+    protected function registerRoutes()
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/active-models.php', 'active-html');
+        Route::group([
+            'prefix' => config('active-html.route_prefix', 'active-html'),
+            'middleware' => config('active-html.route_middleware', ['web']),
+        ], function () {
+            Route::post('model/{action}', [
+                \ChayseHartsuff\ActiveHtml\Http\Controllers\ModelController::class, 
+                'index'
+            ])->name('active-html.model');
+        });
     }
 }
