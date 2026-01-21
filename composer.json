@@ -1,6 +1,8 @@
 {
     "name": "chaysehartsuff/active-html",
     "description": "A centralized JS/PHP bridge for Eloquent models and active HTML components.",
+    "type": "library",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "ChayseHartsuff\\ActiveHtml\\": "src/"
@@ -10,7 +12,11 @@
         "laravel": {
             "providers": [
                 "ChayseHartsuff\\ActiveHtml\\ActiveHtmlServiceProvider"
-            ]
+            ],
+            "publishable": {
+                "config": "config/active-html.php"
+            }
         }
-    }
+    },
+    "require": {}
 }

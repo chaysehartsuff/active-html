@@ -4,6 +4,14 @@
   "description": "Active HTML Entity DAO for Laravel",
   "main": "resources/js/index.js",
   "type": "module",
+  "exports": {
+    ".": "./resources/js/index.js"
+  },
+  "files": [
+    "resources/js",
+    "src",
+    "config"
+  ],
   "dependencies": {
     "quill": "^2.0.0",
     "@tailwindcss/forms": "^0.5.2",
