@@ -23,24 +23,7 @@ class ActiveHtmlServiceProvider extends ServiceProvider
             __DIR__.'/../config/active-models.php' => config_path('active-html.php'),
         ], 'active-html-config');
 
-        // Register Routes
-        $this->registerRoutes();
-    }
-
-    /**
-     * Register package routes
-     * Compatible with Laravel 10, 11, and 12
-     */
-    protected function registerRoutes()
-    {
-        Route::group([
-            'prefix' => config('active-html.route_prefix', 'active-html'),
-            'middleware' => config('active-html.route_middleware', ['web']),
-        ], function () {
-            Route::post('model/{action}', [
-                \ChayseHartsuff\ActiveHtml\Http\Controllers\ModelController::class, 
-                'index'
-            ])->name('active-html.model');
-        });
+        // Register Routes - Load routes file if it exists
+        $this->loadRoutesFrom(__DIR__.'/routes/web.php');
     }
 }
