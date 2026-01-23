@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Routing\Controller as BaseController;
+use ChayseHartsuff\ActiveHtml\Services\ActionFilterService;
+use ChayseHartsuff\ActiveHtml\Services\ActionPermissionService;
+use ChayseHartsuff\ActiveHtml\Enum\Action;
 
 class ModelController extends BaseController {
     public function index(Request $request, $action) {
@@ -69,19 +72,16 @@ class ModelController extends BaseController {
             ],
         ]);
 
-        // At this point, $model or $models will be populated with initialized Eloquent objects
-        // if the corresponding data was in the request.
+        $query = $model::query();
+
+        # Check Permissions
+        if(!ActionPermissionService::canAccess($action, $model)) {
+            return response()->json(['message' => 'You do not have permission to access this action.'], 403);
+        }
 
         switch ($action) {
-            case 'get':
-                // Find a single model by its ID and return it.
-                $query = $model::query();
-
-                // If user_id exists, scope the query to the authenticated user.
-                if (Schema::hasColumn($model->getTable(), 'user_id')) {
-                    $query->where('user_id', Auth::id());
-                }
-
+            case Action::GET:
+                $query = ActionFilterService::applyQuery($action, $model, $query);
                 $foundModel = $query->find($model->id);
 
                 if (!$foundModel) {
@@ -90,95 +90,66 @@ class ModelController extends BaseController {
 
                 return response()->json($foundModel);
 
-            case 'getAll':
-                // The 'model' object from validation tells us which class to use.
-                $query = $model::query();
-
-                // If user_id exists, scope the query to the authenticated user.
-                if (Schema::hasColumn($model->getTable(), 'user_id')) {
-                    $query->where('user_id', Auth::id());
-                }
-
+            case Action::GET_ALL:
+                $query = ActionFilterService::applyQuery($action, $model, $query);
                 return response()->json($query->get());
 
-            case 'create':
-                // The model is already filled from validation.
-                // If user_id exists, associate the new record with the authenticated user.
-                if (Schema::hasColumn($model->getTable(), 'user_id')) {
-                    $model->user_id = Auth::id();
-                }
+            case Action::CREATE:
+                $model = ActionFilterService::applyModel($action, $model);
                 $model->save();
                 return response()->json($model, 201);
 
-            case 'createAll':
+            case Action::CREATE_ALL:
                 $createdRecords = [];
                 foreach ($models as $modelToCreate) {
-                    // If user_id exists, associate the new record with the authenticated user.
-                    if (Schema::hasColumn($modelToCreate->getTable(), 'user_id')) {
-                        $modelToCreate->user_id = Auth::id();
-                    }
+                    $modelToCreate = ActionFilterService::applyModel($action, $modelToCreate);
                     $modelToCreate->save();
                     $createdRecords[] = $modelToCreate;
                 }
                 return response()->json($createdRecords, 201);
 
-            case 'update':
-                // Find the existing record, fill it with new data, and save.
-                $query = $model::query();
-
-                // If user_id exists, scope the query to the authenticated user.
-                if (Schema::hasColumn($model->getTable(), 'user_id')) {
-                    $query->where('user_id', Auth::id());
-                }
-
+            case Action::UPDATE:
+                $query = ActionFilterService::applyQuery($action, $model, $query);
                 $recordToUpdate = $query->find($model->id);
 
                 if ($recordToUpdate) {
                     $recordToUpdate->fill($model->getAttributes());
+                    $recordToUpdate = ActionFilterService::applyModel($action, $recordToUpdate);
                     $recordToUpdate->save();
                     return response()->json($recordToUpdate);
                 }
                 return response()->json(['message' => 'Record not found or you do not have permission to update it.'], 404);
 
-            case 'updateAll':
+            case Action::UPDATE_ALL:
                 // Iterate through the models from the request, find each one, and update it.
                 $updatedRecords = [];
                 foreach ($models as $modelToUpdate) {
                     $query = $modelToUpdate::query();
-
-                    // If user_id exists, scope the query to the authenticated user.
-                    if (Schema::hasColumn($modelToUpdate->getTable(), 'user_id')) {
-                        $query->where('user_id', Auth::id());
-                    }
+                    $query = ActionFilterService::applyQuery($action, $modelToUpdate, $query);
 
                     $record = $query->find($modelToUpdate->id);
 
                     if ($record) {
                         $record->fill($modelToUpdate->getAttributes());
+                        $record = ActionFilterService::applyModel($action, $record);
                         $record->save();
                         $updatedRecords[] = $record;
                     }
                 }
                 return response()->json($updatedRecords);
 
-            case 'delete':
-                // Find the record by ID and delete it.
-                $query = $model::query();
-
-                // If user_id exists, scope the query to the authenticated user.
-                if (Schema::hasColumn($model->getTable(), 'user_id')) {
-                    $query->where('user_id', Auth::id());
-                }
-
+            case Action::DELETE:
+                $query = ActionFilterService::applyQuery($action, $model, $query);
                 $recordToDelete = $query->find($model->id);
 
                 if ($recordToDelete) {
+                    $recordToDelete = ActionFilterService::applyModel($action, $recordToDelete);
                     $recordToDelete->delete();
                     return response()->json(['message' => 'Record deleted successfully.']);
                 }
                 return response()->json(['message' => 'Record not found or you do not have permission to delete it.'], 404);
 
-            case 'deleteAll':
+            case Action::DELETE_ALL:
                 // Get the class from the first model, then collect all IDs to delete.
                 if (empty($models)) {
                     return response()->json(['message' => 'No models provided for deletion.'], 400);
@@ -188,11 +159,7 @@ class ModelController extends BaseController {
                 $idsToDelete = array_map(fn($m) => $m->id, $models);
 
                 $query = $modelClass::query()->whereIn('id', $idsToDelete);
-
-                // If user_id exists, scope the query to the authenticated user.
-                if (Schema::hasColumn($modelInstance->getTable(), 'user_id')) {
-                    $query->where('user_id', Auth::id());
-                }
+                $query = ActionFilterService::applyQuery($action, $modelInstance, $query);
 
                 $deletedCount = $query->delete();
 

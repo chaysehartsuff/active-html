@@ -11,7 +11,7 @@ class ActiveHtmlServiceProvider extends ServiceProvider
     {
         // Merge config
         $this->mergeConfigFrom(
-            __DIR__.'/../config/active-models.php', 
+            __DIR__.'/../config/active-html.php', 
             'active-html'
         );
     }
@@ -20,7 +20,7 @@ class ActiveHtmlServiceProvider extends ServiceProvider
     {
         // Publish Config
         $this->publishes([
-            __DIR__.'/../config/active-models.php' => config_path('active-html.php'),
+            __DIR__.'/../config/active-html.php' => config_path('active-html.php'),
         ], 'active-html-config');
 
         // Register Routes - Load routes file if it exists
