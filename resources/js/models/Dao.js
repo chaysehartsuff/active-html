@@ -8,13 +8,13 @@ export default class Dao {
      * @param {Model} model
      * @return {Model}
      */
-    static get(model, callback) {
+    static get(model, callback, parameters = {}) {
         this.modelRequest('get', model, (response) => {
             const ModelClass = model.constructor;
             const newInstance = new ModelClass();
             Object.assign(newInstance, response);
             callback(newInstance);
-        });
+        }, parameters);
     }
 
     /**
@@ -22,7 +22,7 @@ export default class Dao {
      * @param {Model} model
      * @return {Model[]}
      */
-    static getAll(model, callback) {
+    static getAll(model, callback, parameters = {}) {
         this.modelRequest('getAll', model, (response) => {
             const ModelClass = model.constructor;
             const newInstances = response.map(data => {
@@ -31,27 +31,27 @@ export default class Dao {
                 return instance;
             });
             callback(newInstances);
-        });
+        }, parameters);
     }
 
     /**
      * Creates a new model instance on the server.
      * @param {Model} model
      */
-    static create(model, callback){
+    static create(model, callback, parameters = {}){
         this.modelRequest('create', model, (response) => {
             const ModelClass = model.constructor;
             const newInstance = new ModelClass();
             Object.assign(newInstance, response);
             callback(newInstance);
-        });
+        }, parameters);
     }
 
     /**
      * Creates multiple new model instances on the server.
      * @param {Model[]} models
      */
-    static createAll(models, callback){
+    static createAll(models, callback, parameters = {}){
         this.modelRequest('createAll', models, (response) => {
             const ModelClass = models[0].constructor;
             const newInstances = response.map(data => {
@@ -60,20 +60,20 @@ export default class Dao {
                 return instance;
             });
             callback(newInstances);
-        });
+        }, parameters);
     }
 
     /**
      * Updates an existing model instance on the server.
      * @param {Model} model
      */
-    static update(model, callback){
+    static update(model, callback, parameters = {}){
         this.modelRequest('update', model, (response) => {
             const ModelClass = model.constructor;
             const newInstance = new ModelClass();
             Object.assign(newInstance, response);
             callback(newInstance);
-        });
+        }, parameters);
     }
 
     /**
@@ -81,7 +81,7 @@ export default class Dao {
      * @param {Model[]} models
      *
      * */
-    static updateAll(models, callback){
+    static updateAll(models, callback, parameters = {}){
         this.modelRequest('updateAll', models, (response) => {
             const ModelClass = models[0].constructor;
             const newInstances = response.map(data => {
@@ -90,27 +90,27 @@ export default class Dao {
                 return instance;
             });
             callback(newInstances);
-        });
+        }, parameters);
     }
 
     /**
      * Deletes a model instance from the server.
      * @param {Model} model
      */
-    static delete(model, callback){
+    static delete(model, callback, parameters = {}){
         this.modelRequest('delete', model, (response) => {
             callback(response.message);
-        });
+        }, parameters);
     }
 
     /**
      * Deletes all instances of a model from the server.
      * @param {Model} model
      */
-    static deleteAll(model, callback){
+    static deleteAll(model, callback, parameters = {}){
         this.modelRequest('deleteAll', model, (response) => {
             callback(response.message);
-        });
+        }, parameters);
     }
 
 
@@ -119,8 +119,9 @@ export default class Dao {
      * @param {string} action The action to perform (e.g., 'get', 'create').
      * @param {Model|Model[]} modelOrModels The model or models to act upon.
      * @param {function} callback The function to call with the response.
+     * @param {object} [parameters={}] Additional query parameters to include in the request.
      */
-    static modelRequest(action, modelOrModels, callback) {
+    static modelRequest(action, modelOrModels, callback, parameters = {}) {
         if (!modelOrModels) {
             throw new Error('A model or array of models must be provided.');
         }
@@ -132,7 +133,8 @@ export default class Dao {
         }
 
         const isArray = Array.isArray(modelOrModels);
-        const endpoint = "/model/" + action;
+        const queryString = new URLSearchParams(Object.entries(parameters)).toString();
+        const endpoint = queryString ? "/model/" + action + "?" + queryString : "/model/" + action;
         let body = {};
 
         if (isArray) {
@@ -201,8 +203,8 @@ export default class Dao {
      * @param {Model} model
      * @returns {Promise<Model>}
      */
-    static async getSync(model) {
-        const response = await this.modelRequestSync('get', model);
+    static async getSync(model, parameters = {}) {
+        const response = await this.modelRequestSync('get', model, parameters);
         const ModelClass = model.constructor;
         const newInstance = new ModelClass();
         Object.assign(newInstance, response);
@@ -214,8 +216,8 @@ export default class Dao {
      * @param {Model} model
      * @returns {Promise<Model>}
      */
-    static async createSync(model) {
-        const response = await this.modelRequestSync('create', model);
+    static async createSync(model, parameters = {}) {
+        const response = await this.modelRequestSync('create', model, parameters);
         const ModelClass = model.constructor;
         const newInstance = new ModelClass();
         Object.assign(newInstance, response);
@@ -227,8 +229,8 @@ export default class Dao {
      * @param {Model} model
      * @returns {Promise<Model>}
      */
-    static async updateSync(model) {
-        const response = await this.modelRequestSync('update', model);
+    static async updateSync(model, parameters = {}) {
+        const response = await this.modelRequestSync('update', model, parameters);
         const ModelClass = model.constructor;
         const newInstance = new ModelClass();
         Object.assign(newInstance, response);
@@ -240,8 +242,8 @@ export default class Dao {
      * @param {Model} model
      * @returns {Promise<string>}
      */
-    static async deleteSync(model) {
-        const response = await this.modelRequestSync('delete', model);
+    static async deleteSync(model, parameters = {}) {
+        const response = await this.modelRequestSync('delete', model, parameters);
         return response.message;
     }
 
@@ -251,7 +253,7 @@ export default class Dao {
      * @param {Model|Model[]} modelOrModels The model or models to act upon.
      * @returns {Promise<any>}
      */
-    static async modelRequestSync(action, modelOrModels) {
+    static async modelRequestSync(action, modelOrModels, parameters = {}) {
         if (!modelOrModels) {
             throw new Error('A model or array of models must be provided.');
         }
@@ -260,7 +262,9 @@ export default class Dao {
         }
 
         const isArray = Array.isArray(modelOrModels);
-        const endpoint = "/model/" + action;
+        console.log('parameters', parameters);
+        const queryString = new URLSearchParams(Object.entries(parameters)).toString();
+        const endpoint = queryString ? "/model/" + action + "?" + queryString : "/model/" + action;
         let body = {};
 
         if (isArray) {
@@ -294,6 +298,7 @@ export default class Dao {
         const requestOptions = {
             method: method.toUpperCase(),
             headers: headers,
+            credentials: 'include'
         };
 
         if (body && Object.keys(body).length > 0) {

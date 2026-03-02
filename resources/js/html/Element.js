@@ -18,6 +18,12 @@ export default class Element {
      * The attributes for the element
      * @type {object}
      */
+    attributes = {};
+
+    /**
+     * The properties for the element
+     * @type {object}
+     */
     properties = {};
 
     /**
@@ -124,6 +130,10 @@ export default class Element {
 
         if (this.bindedElement) {
             this.bindedElement.innerHTML = '';
+            this.bindedElement.textContent = '';
+            if ('value' in this.bindedElement) {
+                this.bindedElement.value = '';
+            }
         }
 
         return this;
@@ -149,18 +159,18 @@ export default class Element {
         }
 
         // Ensure the 'class' property exists, initializing if it doesn't.
-        if (!this.properties.class) {
-            this.properties.class = '';
+        if (!this.attributes.class) {
+            this.attributes.class = '';
         }
 
         // Pad the existing classes and the new class with spaces for an exact match check.
-        const paddedCurrentClasses = ` ${this.properties.class} `;
+        const paddedCurrentClasses = ` ${this.attributes.class} `;
         const paddedClassName = ` ${className} `;
 
         // If the class doesn't already exist, append it.
         if (!paddedCurrentClasses.includes(paddedClassName)) {
             // Append with a leading space and trim to handle the initial empty case.
-            this.properties.class = `${this.properties.class} ${className}`.trim();
+            this.attributes.class = `${this.attributes.class} ${className}`.trim();
 
             if (this.bindedElement) {
                 this.bindedElement.classList.add(className);
@@ -174,7 +184,7 @@ export default class Element {
      * @param {string} className The CSS class to remove.
      */
     removeClass(className) {
-        if (!className || typeof className !== 'string' || !this.properties.class) {
+        if (!className || typeof className !== 'string' || !this.attributes.class) {
                 throw new Error('Invalid class name or class list');
         }
 
@@ -182,12 +192,12 @@ export default class Element {
         const paddedClassName = ` ${className} `;
         
         // Use a loop to handle cases where a class might have been added multiple times by mistake.
-        while (` ${this.properties.class} `.includes(paddedClassName)) {
-            this.properties.class = ` ${this.properties.class} `.replace(paddedClassName, ' ').trim();
+        while (` ${this.attributes.class} `.includes(paddedClassName)) {
+            this.attributes.class = ` ${this.attributes.class} `.replace(paddedClassName, ' ').trim();
         }
 
         // Clean up any resulting double spaces.
-        this.properties.class = this.properties.class.replace(/\s+/g, ' ');
+        this.attributes.class = this.attributes.class.replace(/\s+/g, ' ');
 
         if (this.bindedElement) {
             this.bindedElement.classList.remove(className);
@@ -207,27 +217,28 @@ export default class Element {
         }
 
         // If not bound, check the properties string.
-        if (!this.properties.class) {
+        if (!this.attributes.class) {
             return false;
         }
 
         // Use the same padding trick as addClass/removeClass to ensure an exact match.
-        const paddedCurrentClasses = ` ${this.properties.class} `;
+        const paddedCurrentClasses = ` ${this.attributes.class} `;
         const paddedClassName = ` ${className} `;
 
         return paddedCurrentClasses.includes(paddedClassName);
     }
 
     /**
-     * Adds or updates a property on the element.
+     * Adds or updates an attribute on the element.
+     * If the element is bound to the DOM, updates the actual attribute value and syncs it with
      * @param {string} key The property key (attribute name).
      * @param {string|number|boolean} value The property value.
      */
-    addProperty(key, value) {
+    setAttribute(key, value) {
         if (!key || typeof key !== 'string') {
-            throw new Error('Invalid property key');
+            throw new Error('Invalid attribute key');
         }
-        this.properties[key] = value;
+        this.attributes[key] = value;
 
         if (this.bindedElement) {
             this.bindedElement.setAttribute(key, value);
@@ -236,22 +247,79 @@ export default class Element {
         return this;
     }
     /**
-     * Sets a property on the element.
+     * Adds or updates an attribute on the element.
+     * If the element is bound to the DOM, updates the actual attribute value and syncs it with
+     * @param {*} key 
+     * @param {*} value 
+     * @returns 
+     */
+    addAttribute(key, value) {
+        return this.setAttribute(key, value);
+    }
+    /**
+     * Gets the attribute from the element.
+     * If the element is bound to the DOM, retrieves the actual attribute value and syncs it with properties.
+     * @param {string} key The property key to get.
+     * @returns {string|number|boolean|null} The property value, or null if the property does not exist.
+     */
+    getAttribute(key) {
+        if (!key || typeof key !== 'string') {
+            console.warn(`Invalid attribute key '${key}'.`);
+            return null;
+        }
+
+        // If element is bound to DOM, get the real attribute value
+        if (this.bindedElement instanceof HTMLElement) {
+            const domValue = this.bindedElement.getAttribute(key);
+            // Sync the properties object with the actual DOM value (even if null)
+            this.attributes[key] = domValue;
+        }
+
+        // If not bound, return from properties or null
+        return this.attributes[key] || null;
+    }
+
+    /**
+     * Sets or updates a property on the element.
+     * If the element is bound to the DOM, updates the actual property value and syncs it with
      * @param {*} key 
      * @param {*} value 
      * @returns 
      */
     setProperty(key, value) {
-        return this.addProperty(key, value);
+        if (!key || typeof key!== 'string') {
+            throw new Error('Invalid property key');
+        }
+        this.properties[key] = value;
+
+        if (this.bindedElement) {
+            this.bindedElement[key] = value;
+        }
+
+        return this;
     }
+
     /**
-     * Sets an attribute on the element.
-     * @param {*} key 
-     * @param {*} value 
-     * @returns 
-     */
-    setAttribute(key, value) {
-        return this.addProperty(key, value);
+     * Gets the property from the element.
+     * If the element is bound to the DOM, retrieves the actual property value and syncs it with properties.
+     * @param {string} key The property key to get.
+     * @returns {*|null} The property value, or null if the property does not exist.
+     * */
+    getProperty(key) {
+        if (!key || typeof key!== 'string') {
+            console.warn(`Invalid property key '${key}'.`);
+            return null;
+        }
+
+        // If element is bound to DOM, get the real property value
+        if (this.bindedElement instanceof HTMLElement) {
+            const domValue = this.bindedElement[key];
+            // Sync the properties object with the actual DOM value (even if null)
+            this.properties[key] = domValue;
+        }
+
+        // If not bound, return from properties or null
+        return this.properties[key] || null;
     }
 
     /**
@@ -262,7 +330,7 @@ export default class Element {
         if (!key || typeof key !== 'string') {
             throw new Error('Invalid property key');
         }
-        delete this.properties[key];
+        delete this.attributes[key];
 
         if (this.bindedElement) {
             this.bindedElement.removeAttribute(key);
@@ -278,7 +346,8 @@ export default class Element {
      * @param {string} id The ID to set.
      */
     setId(id) {
-        this.addProperty('id', id);
+        this.setAttribute('id', id);
+        this.setProperty('id', id);
         return this;
     }
 
@@ -287,11 +356,11 @@ export default class Element {
      * @returns {string|null} The ID of the element, or null if not set.
      */
     getId() {
-        return this.properties.id || null;
+        return this.attributes.id || null;
     }
 
     /**
-     * Returns innerHTML value of the element.
+     * Returns value of element.
      * @returns {string} The compiled HTML string.
      */
     getValue() {
@@ -299,6 +368,17 @@ export default class Element {
             return this.bindedElement.value;
         }
         return Array.from(this.contentStack.values()).join('');
+    }
+    /**
+     * Sets value on element
+     * @param {*} value 
+     * @returns 
+     */
+    setValue(value) {
+        if (this.bindedElement) {
+            this.bindedElement.value = value;
+        }
+        return this;
     }
 
     hide() {
@@ -331,6 +411,25 @@ export default class Element {
 
         if (this.bindedElement) {
             this.bindedElement.addEventListener(cleanEventName, func);
+        }
+
+        return this;
+    }
+
+    /**
+     * Removes an event listener from the element.
+     * @param {string} eventName The name of the event to remove (e.g., 'click', 'mouseover').
+     * @returns {Element} The current element instance for chaining.
+     */
+    removeEvent(eventName) {
+        if (typeof eventName !== 'string' || !eventName) {
+            throw new Error('Invalid event name provided.');
+        }
+        const cleanEventName = eventName.startsWith('on') ? eventName.substring(2) : eventName;
+
+        if (this.bindedElement && this.events[cleanEventName]) {
+            this.bindedElement.removeEventListener(cleanEventName, this.events[cleanEventName]);
+            delete this.events[cleanEventName];
         }
 
         return this;
@@ -371,6 +470,46 @@ export default class Element {
         return this;
     }
 
+    /**
+     * Binds all stored attributes to the binded element in the DOM.
+     * @returns {Element} The current element instance for chaining.
+     */
+    bindAttributes() {
+        if (!this.bindedElement) {
+            console.error('Cannot bind attributes: Element is not bound to the DOM.');
+            return this;
+        }
+
+        for (const [key, value] of Object.entries(this.attributes)) {
+            this.bindedElement.setAttribute(key, value);
+        }
+        return this;
+    }
+
+    /**
+     * Binds all stored properties to the binded element in the DOM.
+     * @returns {Element} The current element instance for chaining.
+     */
+    bindProperties() {
+        if (!this.bindedElement) {
+            console.error('Cannot bind properties: Element is not bound to the DOM.');
+            return this;
+        }
+        
+        for (const [key, value] of Object.entries(this.properties)) {
+            this.bindedElement[key] = value;
+        }
+        return this;
+    }
+
+    /**
+     * Binds everything to the binded element in the DOM.
+     * @returns 
+     */
+    bindAll() {
+        return this.bindAttributes().bindProperties().bindEvents();
+    }
+
     addListener(key, callback) {
         if (!this.listeners.has(key)) {
             this.listeners.set(key, []);
@@ -386,7 +525,7 @@ export default class Element {
     }
 
     compile(){
-        const props = Object.entries(this.properties)
+        const props = Object.entries(this.attributes)
             .map(([key, value]) => `${key}="${value}"`)
             .join(' ');
 

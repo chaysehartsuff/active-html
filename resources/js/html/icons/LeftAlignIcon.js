@@ -11,11 +11,11 @@ export default class LeftAlignIcon extends Element {
     constructor() {
         super();
         this.addClass('w-full');
-        this.addProperty('viewBox', '0 0 24 24');
-        this.addProperty('fill', 'none');
+        this.addAttribute('viewBox', '0 0 24 24');
+        this.addAttribute('fill', 'none');
         let path = new Path();
-        path.addProperty('d', "M0 30.016h20v-4h-20v4zM0 22.016h28v-4h-28v4zM0 14.016h24v-4h-24v4zM0 6.016h32v-4h-32v4z");
-        path.addProperty('fill', 'currentColor');
+        path.addAttribute('d', "M0 30.016h20v-4h-20v4zM0 22.016h28v-4h-28v4zM0 14.016h24v-4h-24v4zM0 6.016h32v-4h-32v4z");
+        path.addAttribute('fill', 'currentColor');
         this.addContent(path);
     }
 }

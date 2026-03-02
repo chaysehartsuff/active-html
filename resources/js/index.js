@@ -22,6 +22,7 @@ export { default as ProgressBar } from './html/ProgressBar.js';
 export { default as QuickActionMenu } from './html/QuickActionMenu.js';
 export { default as Select } from './html/Select.js';
 export { default as TextArea } from './html/TextArea.js';
+export { default as Checkbox } from './html/Checkbox.js';
 
 // 3. Icons
 export { default as CenterAlignIcon } from './html/icons/CenterAlignIcon.js';

@@ -34,7 +34,7 @@ export default class Button extends Element {
         // Handle the color parameter
         if (color) {
             // Use an inline style for a dynamic background color
-            this.addProperty('style', `background-color: ${color};`);
+            this.addAttribute('style', `background-color: ${color};`);
             // Set a default focus ring color, which can be overridden
             this.addClass('focus:ring-gray-500');
         } else {

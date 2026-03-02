@@ -11,11 +11,11 @@ export default class ThreeDotsIcon extends Element {
     constructor() {
         super();
         this.addClass('w-full');
-        this.addProperty('viewBox', '0 0 24 24');
-        this.addProperty('fill', 'currentColor'); // Changed from 'none' to 'currentColor'
+        this.addAttribute('viewBox', '0 0 24 24');
+        this.addAttribute('fill', 'currentColor'); // Changed from 'none' to 'currentColor'
         let path = new Path();
         // This path creates three horizontal dots centered in the 24x24 viewbox
-        path.addProperty('d', "M4 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0zm6 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zm6 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0z");
+        path.addAttribute('d', "M4 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0zm6 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zm6 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0z");
         this.addContent(path);
     }
 }

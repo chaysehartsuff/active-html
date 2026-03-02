@@ -6,7 +6,7 @@ export default class Option extends Element {
 
     constructor(value, text) {
         super();
-        this.addProperty('value', value);
+        this.addAttribute('value', value);
         this.addContent(text);
 
         // Basic styling for option elements
@@ -18,7 +18,7 @@ export default class Option extends Element {
      * @returns {Option}
      */
     setDefault() {
-        this.addProperty('selected', true);
+        this.addAttribute('selected', true);
         return this;
     }
 }

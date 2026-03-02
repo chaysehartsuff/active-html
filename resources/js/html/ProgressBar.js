@@ -26,7 +26,7 @@ export default class ProgressBar extends Element {
         this.bar = new Element('div')
             .addClass('bg-blue-600').addClass('h-6').addClass('rounded-full')
             .addClass('transition-all').addClass('duration-500').addClass('ease-in-out')
-            .addProperty('style', 'width: 0%');
+            .addAttribute('style', 'width: 0%');
 
         // Text overlay
         this.text = new Element('div')
@@ -45,7 +45,7 @@ export default class ProgressBar extends Element {
     update(current, total) {
         if (total > 0) {
             const percentage = Math.min(100, Math.max(0, (current / total) * 100));
-            this.bar.addProperty('style', `width: ${percentage}%`);
+            this.bar.addAttribute('style', `width: ${percentage}%`);
             this.text.setContent(`Uploading ${current} of ${total}...`);
         }
     }
@@ -62,7 +62,7 @@ export default class ProgressBar extends Element {
      */
     hide() {
         this.addClass('hidden');
-        this.bar.addProperty('style', 'width: 0%');
+        this.bar.addAttribute('style', 'width: 0%');
         this.text.clearContent();
     }
 }

@@ -28,8 +28,8 @@ export default class Model {
      * Fetches the model's data from the server.
      * @returns {Promise<Model>}
      */
-    async get() {
-        const updatedInstance = await Dao.getSync(this);
+    async get(parameters = {}) {
+        const updatedInstance = await Dao.getSync(this, parameters);
         Object.assign(this, updatedInstance);
         return this;
     }
@@ -38,8 +38,8 @@ export default class Model {
      * Creates a new record on the server.
      * @returns {Promise<Model>}
      */
-    async create() {
-        const newInstance = await Dao.createSync(this);
+    async create(parameters = {}) {
+        const newInstance = await Dao.createSync(this, parameters);
         Object.assign(this, newInstance);
         return this;
     }
@@ -48,8 +48,8 @@ export default class Model {
      * Updates the record on the server.
      * @returns {Promise<Model>}
      */
-    async update() {
-        const updatedInstance = await Dao.updateSync(this);
+    async update(parameters = {}) {
+        const updatedInstance = await Dao.updateSync(this, parameters);
         Object.assign(this, updatedInstance);
         return this;
     }
@@ -58,7 +58,7 @@ export default class Model {
      * Deletes the record from the server.
      * @returns {Promise<string>}
      */
-    async delete() {
-        return await Dao.deleteSync(this);
+    async delete(parameters = {}) {
+        return await Dao.deleteSync(this, parameters);
     }
 }

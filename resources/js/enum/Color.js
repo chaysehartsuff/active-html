@@ -11,6 +11,7 @@ export default class Color {
     static get WHITE() { return '#FFFFFF'; }
     static get RED() { return '#FF0000'; }
     static get GREEN() { return '#008000'; }
+    static get LIGHT_GREEN() { return '#90EE90'; }
     static get BLUE() { return '#0000FF'; }
     static get YELLOW() { return '#FFFF00'; }
     static get ORANGE() { return '#FFA500'; }

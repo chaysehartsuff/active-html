@@ -16,18 +16,24 @@ class ActionFilterService
      */
     static public function applyQuery($action, $model, $query)
     {
-        $filters = config('active-html.action_filters', []);
+        $model_filters = config('active-html.action_filters', []);
 
         if($model instanceof Model){
             $model = get_class($model);
         }
 
-        if (isset($filters[$model])) {
-            $filter = new $filters[$model]();
-            if (!$filter instanceof \ChayseHartsuff\ActiveHtml\Services\Filters\BaseFilter) {
-                throw new \Exception("Filter for model '{$model}' must be an instance of ChayseHartsuff\ActiveHtml\Services\Filters\BaseFilter");
+        if (isset($model_filters[$model])) {
+            $filters = $model_filters[$model];
+            if(!is_array($filters)){
+                $filters = [$filters];
             }
-            return $filter->query($action, $query);
+            foreach($filters as $filter) {
+                $filter = new $filter();
+                if (!$filter instanceof \ChayseHartsuff\ActiveHtml\Services\Filters\BaseFilter) {
+                    throw new \Exception("Filter for model '{$model}' must be an instance of ChayseHartsuff\ActiveHtml\Services\Filters\BaseFilter");
+                }
+                return $filter->query($action, $query);
+            }
         }
 
         return $query;
@@ -42,16 +48,22 @@ class ActionFilterService
      * */
     static public function applyModel($action, $model)
     {
-        $filters = config('active-html.action_filters', []);
+        $model_filters = config('active-html.action_filters', []);
 
         $modelString = get_class($model);
 
-        if (isset($filters[$modelString])) {
-            $filter = new $filters[$modelString]();
-            if (!$filter instanceof \ChayseHartsuff\ActiveHtml\Services\Filters\BaseFilter) {
-                throw new \Exception("Filter for model '{$modelString}' must be an instance of ChayseHartsuff\ActiveHtml\Services\Filters\BaseFilter");
+        if (isset($model_filters[$modelString])) {
+            $filters = $model_filters[$modelString];
+            if(!is_array($filters)){
+                $filters = [$filters];
             }
-            return $filter->model($action, $model);
+            foreach ($filters as $filter) {
+                $filter = new $filter();
+                if (!$filter instanceof \ChayseHartsuff\ActiveHtml\Services\Filters\BaseFilter) {
+                    throw new \Exception("Filter for model '{$modelString}' must be an instance of ChayseHartsuff\ActiveHtml\Services\Filters\BaseFilter");
+                }
+                $model = $filter->model($action, $model);
+            }
         }
 
         return $model;

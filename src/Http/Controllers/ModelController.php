@@ -13,7 +13,15 @@ use ChayseHartsuff\ActiveHtml\Enum\Action;
 
 class ModelController extends BaseController {
     public function index(Request $request, $action) {
-
+    \Log::info('ModelController.index called', [
+        'action' => $action,
+        'auth_check' => Auth::check(),
+        'auth_id' => Auth::id(),
+        'session_id' => session()->getId(),
+        'cookies' => $request->cookies->all(),
+        'headers' => $request->headers->all(),
+        'user' => Auth::user(),
+    ]);
         /**
          * @var Model $model
          */
@@ -23,6 +31,10 @@ class ModelController extends BaseController {
          */
         $models = [];
         $activeModels = config('active-html.models', []);
+
+        if(Auth::check()){
+            $tightass = 0;
+        }
 
         $request->validate([
             'model' => function ($attribute, $value, $fail) use ($activeModels, &$model) {
@@ -83,16 +95,21 @@ class ModelController extends BaseController {
             case Action::GET:
                 $query = ActionFilterService::applyQuery($action, $model, $query);
                 $foundModel = $query->find($model->id);
+                $foundModel = ActionFilterService::applyModel($action, $foundModel);
 
                 if (!$foundModel) {
                     return response()->json(['message' => 'Record not found or you do not have permission to access it.'], 404);
                 }
-
+                
                 return response()->json($foundModel);
 
             case Action::GET_ALL:
                 $query = ActionFilterService::applyQuery($action, $model, $query);
-                return response()->json($query->get());
+                $models = $query->get();
+                for ($i = 0; $i < count($models); $i++) {
+                    $models[$i] = ActionFilterService::applyModel($action, $models[$i]);
+                }
+                return response()->json($models);
 
             case Action::CREATE:
                 $model = ActionFilterService::applyModel($action, $model);
