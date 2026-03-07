@@ -4,6 +4,7 @@ import Dao from './Dao.js';
  * The base Model class for interacting with our active models
  */
 export default class Model {
+    errors;
     /**
      * Gathers all instance properties and adds the class name to create a body object for requests.
      * @returns {object}

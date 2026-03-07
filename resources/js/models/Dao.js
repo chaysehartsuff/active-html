@@ -181,17 +181,9 @@ export default class Dao {
 
         fetch(endpoint, requestOptions)
             .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => { throw err; }).catch(() => {
-                        throw new Error(`Request failed with status ${response.status}`);
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (callback && typeof callback === 'function') {
+                return response.json().catch(() => response.text()).then(data => {
                     callback(data);
-                }
+                });
             })
             .catch(error => {
                 console.error('DAO Request Error:', error);
@@ -307,18 +299,12 @@ export default class Dao {
 
         try {
             const response = await fetch(endpoint, requestOptions);
-            if (!response.ok) {
-                try {
-                    const err = await response.json();
-                    throw err;
-                } catch (e) {
-                    throw new Error(`Request failed with status ${response.status}`);
-                }
-            }
-            return await response.json();
+            return await response.json().catch(() => response.text()).then(data => {
+            return data;
+            });
         } catch (error) {
             console.error('DAO Request Error:', error);
-            throw error; // Re-throw the error to be caught by the caller
+            throw error;
         }
     }
 }
