@@ -2,6 +2,7 @@
 
 namespace ChayseHartsuff\ActiveHtml\Services;
 
+use ChayseHartsuff\ActiveHtml\Exceptions\InvalidRequestInput;
 use ChayseHartsuff\ActiveHtml\Services\Processors\BaseProcessor;
 use Illuminate\Database\Eloquent\Model;
 
@@ -61,11 +62,18 @@ class ActionProcessService
                 throw new \Exception("Processor for model '{$modelString}' must be an instance of ChayseHartsuff\\ActiveHtml\\Services\\Processors\\BaseProcessor");
             }
 
-            $result = $processor($model, $models, $query, $action, $last_response);
-            $model = $result->getModel();
-            $models = $result->getModels();
-            $query = $result->getQuery();
-            $last_response = $result->getResponse();
+            try {
+                $result = $processor($model, $models, $query, $action, $last_response);
+                $model = $result->getModel();
+                $models = $result->getModels();
+                $query = $result->getQuery();
+                $last_response = $result->getResponse();
+            } catch (InvalidRequestInput $e) {
+                $last_response = [
+                    'errors' => $e->errors(),
+                ];
+                break;
+            }
         }
 
         return $last_response;

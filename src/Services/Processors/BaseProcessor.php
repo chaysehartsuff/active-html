@@ -3,6 +3,7 @@
 namespace ChayseHartsuff\ActiveHtml\Services\Processors;
 
 use ChayseHartsuff\ActiveHtml\Enum\Action;
+use ChayseHartsuff\ActiveHtml\Exceptions\InvalidRequestInput;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Validator;
 
@@ -47,62 +48,69 @@ class BaseProcessor {
     }
 
     protected function run(){
-        $query = $this->getQuery();
-        $model = $this->getModel();
-        switch ($this->getAction()){
-            case Action::GET:
-                $this->setModel($query->first($model->id));
-                break;
-            case Action::GET_ALL:
-                $this->setModels($query->get());
-                break;
-            case Action::UPDATE:
-            case Action::CREATE:
-                $model->save();
-                $model->refresh();
-                $this->setModel($model);
-                break;
-            case Action::UPDATE_ALL:
-            case Action::CREATE_ALL:
-                $modelsToSave = [];
-                foreach ($this->getModels() as $modelToCreate) {
-                    $modelToCreate->save();
-                    $modelToCreate->refresh();
-                    $modelsToSave[] = $modelToCreate;
-                }
-                $this->setModels($modelsToSave);
-                break;
-            case Action::DELETE:
-                $this->setResponse('deleted', $model->delete());
-                break;
-            case Action::DELETE_ALL:
-                $deletedCount = 0;
-                foreach ($this->getModels() as $modelToDelete) {
-                    $deletedCount += $modelToDelete->delete();
-                }
-                $this->setResponse('deleted', $deletedCount);
-                break;
-        }   
+        if(empty($this->getErrors())){
+            $query = $this->getQuery();
+            $model = $this->getModel();
+            switch ($this->getAction()){
+                case Action::GET:
+                    $this->setModel($query->first($model->id));
+                    break;
+                case Action::GET_ALL:
+                    $this->setModels($query->get());
+                    break;
+                case Action::UPDATE:
+                case Action::CREATE:
+                    $model->save();
+                    $model->refresh();
+                    $this->setModel($model);
+                    break;
+                case Action::UPDATE_ALL:
+                case Action::CREATE_ALL:
+                    $modelsToSave = [];
+                    foreach ($this->getModels() as $modelToCreate) {
+                        $modelToCreate->save();
+                        $modelToCreate->refresh();
+                        $modelsToSave[] = $modelToCreate;
+                    }
+                    $this->setModels($modelsToSave);
+                    break;
+                case Action::DELETE:
+                    $this->setResponse('deleted', $model->delete());
+                    break;
+                case Action::DELETE_ALL:
+                    $deletedCount = 0;
+                    foreach ($this->getModels() as $modelToDelete) {
+                        $deletedCount += $modelToDelete->delete();
+                    }
+                    $this->setResponse('deleted', $deletedCount);
+                    break;
+            }   
+        }
     }
     /**
      * Validates the model against the given rules and stores any errors.
      * Rules are defined exactly like standard Laravel validation rules.
      *
      * @param mixed $rules
+     * @param mixed $messages
+     * @param mixed $attributes
      * @return void
      */
-    protected function validate($rules = []){
+    protected function validate($rules = [], $messages = [], $attributes = []){
         $data = [];
 
         foreach (array_keys($rules) as $field) {
             $data[$field] = data_get($this->_model, $field);
         }
 
-        $validator = Validator::make($data, $rules);
+        $validator = Validator::make($data, $rules, $messages, $attributes);
 
         $this->_errors = $validator->fails()
             ? $validator->errors()->toArray()
             : [];
+        if (!empty($this->getErrors())) {
+            throw new InvalidRequestInput($this->getErrors());
+        }
     }
     /**
      * Checks if current action matches a certain type
