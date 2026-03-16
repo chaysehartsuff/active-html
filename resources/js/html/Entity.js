@@ -6,7 +6,6 @@ import Element from './Element.js';
 export default class Entity extends Element {
     constructor(){
         super();
-        this.addClass('relative group');
     }
     static createInstanceFromObject(obj) {
         const entity = new this();

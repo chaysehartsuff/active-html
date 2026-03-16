@@ -9,19 +9,12 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Routing\Controller as BaseController;
 use ChayseHartsuff\ActiveHtml\Services\ActionFilterService;
 use ChayseHartsuff\ActiveHtml\Services\ActionPermissionService;
+use ChayseHartsuff\ActiveHtml\Services\ActionProcessService;
+use ChayseHartsuff\ActiveHtml\Services\Processors\BaseProcessor;
 use ChayseHartsuff\ActiveHtml\Enum\Action;
 
 class ModelController extends BaseController {
     public function index(Request $request, $action) {
-    \Log::info('ModelController.index called', [
-        'action' => $action,
-        'auth_check' => Auth::check(),
-        'auth_id' => Auth::id(),
-        'session_id' => session()->getId(),
-        'cookies' => $request->cookies->all(),
-        'headers' => $request->headers->all(),
-        'user' => Auth::user(),
-    ]);
         /**
          * @var Model $model
          */
@@ -31,10 +24,6 @@ class ModelController extends BaseController {
          */
         $models = [];
         $activeModels = config('active-html.models', []);
-
-        if(Auth::check()){
-            $tightass = 0;
-        }
 
         $request->validate([
             'model' => function ($attribute, $value, $fail) use ($activeModels, &$model) {
@@ -91,103 +80,11 @@ class ModelController extends BaseController {
             return response()->json(['message' => 'You do not have permission to access this action.'], 403);
         }
 
-        switch ($action) {
-            case Action::GET:
-                $query = ActionFilterService::applyQuery($action, $model, $query);
-                $foundModel = $query->find($model->id);
-                $foundModel = ActionFilterService::applyModel($action, $foundModel);
+        $aps = new ActionProcessService();
+        $response = $aps
+            ->runLast(BaseProcessor::class)
+            ->run($action, $model, $models, $query);
 
-                if (!$foundModel) {
-                    return response()->json(['message' => 'Record not found or you do not have permission to access it.'], 404);
-                }
-                
-                return response()->json($foundModel);
-
-            case Action::GET_ALL:
-                $query = ActionFilterService::applyQuery($action, $model, $query);
-                $models = $query->get();
-                for ($i = 0; $i < count($models); $i++) {
-                    $models[$i] = ActionFilterService::applyModel($action, $models[$i]);
-                }
-                return response()->json($models);
-
-            case Action::CREATE:
-                $model = ActionFilterService::applyModel($action, $model);
-                $model->save();
-                return response()->json($model, 201);
-
-            case Action::CREATE_ALL:
-                $createdRecords = [];
-                foreach ($models as $modelToCreate) {
-                    $modelToCreate = ActionFilterService::applyModel($action, $modelToCreate);
-                    $modelToCreate->save();
-                    $createdRecords[] = $modelToCreate;
-                }
-                return response()->json($createdRecords, 201);
-
-            case Action::UPDATE:
-                $query = ActionFilterService::applyQuery($action, $model, $query);
-                $recordToUpdate = $query->find($model->id);
-
-                if ($recordToUpdate) {
-                    $recordToUpdate->fill($model->getAttributes());
-                    $recordToUpdate = ActionFilterService::applyModel($action, $recordToUpdate);
-                    $recordToUpdate->save();
-                    return response()->json($recordToUpdate);
-                }
-                return response()->json(['message' => 'Record not found or you do not have permission to update it.'], 404);
-
-            case Action::UPDATE_ALL:
-                // Iterate through the models from the request, find each one, and update it.
-                $updatedRecords = [];
-                foreach ($models as $modelToUpdate) {
-                    $query = $modelToUpdate::query();
-                    $query = ActionFilterService::applyQuery($action, $modelToUpdate, $query);
-
-                    $record = $query->find($modelToUpdate->id);
-
-                    if ($record) {
-                        $record->fill($modelToUpdate->getAttributes());
-                        $record = ActionFilterService::applyModel($action, $record);
-                        $record->save();
-                        $updatedRecords[] = $record;
-                    }
-                }
-                return response()->json($updatedRecords);
-
-            case Action::DELETE:
-                $query = ActionFilterService::applyQuery($action, $model, $query);
-                $recordToDelete = $query->find($model->id);
-
-                if ($recordToDelete) {
-                    $recordToDelete = ActionFilterService::applyModel($action, $recordToDelete);
-                    $recordToDelete->delete();
-                    return response()->json(['message' => 'Record deleted successfully.']);
-                }
-                return response()->json(['message' => 'Record not found or you do not have permission to delete it.'], 404);
-
-            case Action::DELETE_ALL:
-                // Get the class from the first model, then collect all IDs to delete.
-                if (empty($models)) {
-                    return response()->json(['message' => 'No models provided for deletion.'], 400);
-                }
-                $modelClass = get_class($models[0]);
-                $modelInstance = new $modelClass();
-                $idsToDelete = array_map(fn($m) => $m->id, $models);
-
-                $query = $modelClass::query()->whereIn('id', $idsToDelete);
-                $query = ActionFilterService::applyQuery($action, $modelInstance, $query);
-
-                $deletedCount = $query->delete();
-
-                return response()->json(['message' => "Deleted {$deletedCount} records."]);
-        }
-
-        // Temporary response for testing
-        return response()->json([
-            'message' => 'Validation passed. Action: ' . $action,
-            'model' => $model,
-            'models' => $models
-        ]);
+        return response()->json($response);
     }
 }

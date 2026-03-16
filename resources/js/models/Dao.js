@@ -12,7 +12,9 @@ export default class Dao {
         this.modelRequest('get', model, (response) => {
             const ModelClass = model.constructor;
             const newInstance = new ModelClass();
-            Object.assign(newInstance, response);
+            if(response.hasOwnProperty('model')){
+                Object.assign(newInstance, response.model);
+            }
             callback(newInstance);
         }, parameters);
     }
@@ -25,11 +27,14 @@ export default class Dao {
     static getAll(model, callback, parameters = {}) {
         this.modelRequest('getAll', model, (response) => {
             const ModelClass = model.constructor;
-            const newInstances = response.map(data => {
-                const instance = new ModelClass();
-                Object.assign(instance, data);
-                return instance;
-            });
+            let newInstances = [];
+            if(response.hasOwnProperty('models')){
+                newInstances = response.models.map(data => {
+                    const instance = new ModelClass();
+                    Object.assign(instance, data);
+                    return instance;
+                });
+            }
             callback(newInstances);
         }, parameters);
     }
@@ -42,7 +47,9 @@ export default class Dao {
         this.modelRequest('create', model, (response) => {
             const ModelClass = model.constructor;
             const newInstance = new ModelClass();
-            Object.assign(newInstance, response);
+            if(response.hasOwnProperty('model')){
+                Object.assign(newInstance, response.model);
+            }
             callback(newInstance);
         }, parameters);
     }
@@ -54,11 +61,14 @@ export default class Dao {
     static createAll(models, callback, parameters = {}){
         this.modelRequest('createAll', models, (response) => {
             const ModelClass = models[0].constructor;
-            const newInstances = response.map(data => {
-                const instance = new ModelClass();
-                Object.assign(instance, data);
-                return instance;
-            });
+            let newInstances = [];
+            if(response.hasOwnProperty('models')){
+                newInstances = response.models.map(data => {
+                    const instance = new ModelClass();
+                    Object.assign(instance, data);
+                    return instance;
+                });
+            }
             callback(newInstances);
         }, parameters);
     }
@@ -71,7 +81,9 @@ export default class Dao {
         this.modelRequest('update', model, (response) => {
             const ModelClass = model.constructor;
             const newInstance = new ModelClass();
-            Object.assign(newInstance, response);
+            if(response.hasOwnProperty('model')){
+                Object.assign(newInstance, response.model);
+            }
             callback(newInstance);
         }, parameters);
     }
@@ -84,11 +96,14 @@ export default class Dao {
     static updateAll(models, callback, parameters = {}){
         this.modelRequest('updateAll', models, (response) => {
             const ModelClass = models[0].constructor;
-            const newInstances = response.map(data => {
-                const instance = new ModelClass();
-                Object.assign(instance, data);
-                return instance;
-            });
+            let newInstances = [];
+            if(response.hasOwnProperty('models')){
+                newInstances = response.models.map(data => {
+                    const instance = new ModelClass();
+                    Object.assign(instance, data);
+                    return instance;
+                });
+            } 
             callback(newInstances);
         }, parameters);
     }
@@ -99,7 +114,7 @@ export default class Dao {
      */
     static delete(model, callback, parameters = {}){
         this.modelRequest('delete', model, (response) => {
-            callback(response.message);
+            callback(response);
         }, parameters);
     }
 
@@ -109,7 +124,7 @@ export default class Dao {
      */
     static deleteAll(model, callback, parameters = {}){
         this.modelRequest('deleteAll', model, (response) => {
-            callback(response.message);
+            callback(response);
         }, parameters);
     }
 
@@ -254,7 +269,6 @@ export default class Dao {
         }
 
         const isArray = Array.isArray(modelOrModels);
-        console.log('parameters', parameters);
         const queryString = new URLSearchParams(Object.entries(parameters)).toString();
         const endpoint = queryString ? "/model/" + action + "?" + queryString : "/model/" + action;
         let body = {};
@@ -300,7 +314,7 @@ export default class Dao {
         try {
             const response = await fetch(endpoint, requestOptions);
             return await response.json().catch(() => response.text()).then(data => {
-            return data;
+                return data;
             });
         } catch (error) {
             console.error('DAO Request Error:', error);

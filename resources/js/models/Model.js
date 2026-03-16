@@ -25,13 +25,22 @@ export default class Model {
         return body;
     }
 
+    extractModelFromResponse(response) {
+        if (response.hasOwnProperty('model')) {
+            Object.assign(this, response.model);
+        }
+    }
+
     /**
      * Fetches the model's data from the server.
      * @returns {Promise<Model>}
      */
-    async get(parameters = {}) {
-        const updatedInstance = await Dao.getSync(this, parameters);
-        Object.assign(this, updatedInstance);
+    async get(parameters = {}, callback = null) {
+        const response = await Dao.modelRequestSync('get', this, parameters);
+        this.extractModelFromResponse(response);
+        if (callback) {
+            callback(response);
+        }
         return this;
     }
 
@@ -39,9 +48,12 @@ export default class Model {
      * Creates a new record on the server.
      * @returns {Promise<Model>}
      */
-    async create(parameters = {}) {
-        const newInstance = await Dao.createSync(this, parameters);
-        Object.assign(this, newInstance);
+    async create(parameters = {}, callback = null) {
+        const response = await Dao.modelRequestSync('create', this, parameters);
+        this.extractModelFromResponse(response);
+        if (callback) {
+            callback(response);
+        }
         return this;
     }
 
@@ -49,9 +61,12 @@ export default class Model {
      * Updates the record on the server.
      * @returns {Promise<Model>}
      */
-    async update(parameters = {}) {
-        const updatedInstance = await Dao.updateSync(this, parameters);
-        Object.assign(this, updatedInstance);
+    async update(parameters = {}, callback = null) {
+        const response = await Dao.modelRequestSync('update', this, parameters);
+        this.extractModelFromResponse(response);
+        if (callback) {
+            callback(response);
+        }
         return this;
     }
 
@@ -59,7 +74,11 @@ export default class Model {
      * Deletes the record from the server.
      * @returns {Promise<string>}
      */
-    async delete(parameters = {}) {
-        return await Dao.deleteSync(this, parameters);
+    async delete(parameters = {}, callback = null) {
+        const response = await Dao.modelRequestSync('delete', this, parameters);
+        if (callback) {
+            callback(response);
+        }
+        return response;
     }
 }
