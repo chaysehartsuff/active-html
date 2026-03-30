@@ -53,12 +53,17 @@ class BaseProcessor {
             $model = $this->getModel();
             switch ($this->getAction()){
                 case Action::GET:
-                    $this->setModel($query->first($model->id));
+                    $this->setModel($query->find($model->id));
                     break;
                 case Action::GET_ALL:
                     $this->setModels($query->get());
                     break;
                 case Action::UPDATE:
+                    $existingModel = $query->find($model->id);
+                    $existingModel->fill($model->getAttributes());
+                    $existingModel->save();
+                    $this->setModel($existingModel);
+                    break;
                 case Action::CREATE:
                     $model->save();
                     $model->refresh();

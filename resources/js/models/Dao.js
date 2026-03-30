@@ -210,11 +210,13 @@ export default class Dao {
      * @param {Model} model
      * @returns {Promise<Model>}
      */
-    static async getSync(model, parameters = {}) {
-        const response = await this.modelRequestSync('get', model, parameters);
+    static getSync(model, parameters = {}) {
+        const response = this.modelRequestSync('get', model, parameters);
         const ModelClass = model.constructor;
         const newInstance = new ModelClass();
-        Object.assign(newInstance, response);
+        if (response && response.hasOwnProperty('model')) {
+            Object.assign(newInstance, response.model);
+        }
         return newInstance;
     }
 
@@ -223,11 +225,13 @@ export default class Dao {
      * @param {Model} model
      * @returns {Promise<Model>}
      */
-    static async createSync(model, parameters = {}) {
-        const response = await this.modelRequestSync('create', model, parameters);
+    static createSync(model, parameters = {}) {
+        const response = this.modelRequestSync('create', model, parameters);
         const ModelClass = model.constructor;
         const newInstance = new ModelClass();
-        Object.assign(newInstance, response);
+        if (response && response.hasOwnProperty('model')) {
+            Object.assign(newInstance, response.model);
+        }
         return newInstance;
     }
 
@@ -236,11 +240,13 @@ export default class Dao {
      * @param {Model} model
      * @returns {Promise<Model>}
      */
-    static async updateSync(model, parameters = {}) {
-        const response = await this.modelRequestSync('update', model, parameters);
+    static updateSync(model, parameters = {}) {
+        const response = this.modelRequestSync('update', model, parameters);
         const ModelClass = model.constructor;
         const newInstance = new ModelClass();
-        Object.assign(newInstance, response);
+        if (response && response.hasOwnProperty('model')) {
+            Object.assign(newInstance, response.model);
+        }
         return newInstance;
     }
 
@@ -249,8 +255,8 @@ export default class Dao {
      * @param {Model} model
      * @returns {Promise<string>}
      */
-    static async deleteSync(model, parameters = {}) {
-        const response = await this.modelRequestSync('delete', model, parameters);
+    static deleteSync(model, parameters = {}) {
+        const response = this.modelRequestSync('delete', model, parameters);
         return response.message;
     }
 
@@ -260,7 +266,7 @@ export default class Dao {
      * @param {Model|Model[]} modelOrModels The model or models to act upon.
      * @returns {Promise<any>}
      */
-    static async modelRequestSync(action, modelOrModels, parameters = {}) {
+    static modelRequestSync(action, modelOrModels, parameters = {}) {
         if (!modelOrModels) {
             throw new Error('A model or array of models must be provided.');
         }
@@ -279,7 +285,7 @@ export default class Dao {
             body.model = modelOrModels.getBody();
         }
 
-        return await this.requestSync(endpoint, body);
+        return this.requestSync(endpoint, body);
     }
     /**
      * Performs a generic fetch request to the server synchronously.
@@ -288,37 +294,36 @@ export default class Dao {
      * @param {string} [method='POST'] The HTTP method to use.
      * @returns {Promise<any>}
      */
-    static async requestSync(endpoint, body, method = 'POST') {
+    static requestSync(endpoint, body, method = 'POST') {
         const tokenMeta = document.querySelector('meta[name="csrf-token"]');
 
         if (!tokenMeta || !tokenMeta.content) {
             throw new Error('CSRF token not found. Ensure a meta tag with name="csrf-token" is present in the document head.');
         }
 
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': tokenMeta.content
-        };
+        const xhr = new XMLHttpRequest();
+        xhr.open(method.toUpperCase(), endpoint, false);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('X-CSRF-TOKEN', tokenMeta.content);
 
-        const requestOptions = {
-            method: method.toUpperCase(),
-            headers: headers,
-            credentials: 'include'
-        };
-
+        let payload = null;
         if (body && Object.keys(body).length > 0) {
-            requestOptions.body = JSON.stringify(body);
+            payload = JSON.stringify(body);
         }
 
+        xhr.send(payload);
+
+        if (xhr.status === 0) {
+            throw new Error('DAO Request Error: Unable to reach endpoint.');
+        }
+
+        const responseText = xhr.responseText || '';
         try {
-            const response = await fetch(endpoint, requestOptions);
-            return await response.json().catch(() => response.text()).then(data => {
-                return data;
-            });
-        } catch (error) {
-            console.error('DAO Request Error:', error);
-            throw error;
+            return JSON.parse(responseText);
+        } catch (_error) {
+            return responseText;
         }
     }
 }

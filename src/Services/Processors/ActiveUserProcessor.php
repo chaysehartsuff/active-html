@@ -9,11 +9,13 @@ use Illuminate\Support\Facades\Auth;
 
 /**
  * 
- * Ensures object is always associated with authed user
+ * Modifies 'get' action return user if session is authed
  */
-class PermissionProcessor extends BaseProcessor {
+class ActiveUserProcessor extends BaseProcessor {
 
     public function run(){
-
+        if(Auth::check() && $this->getModel() instanceof \App\Models\User && $this->isAction(Action::GET)){
+            $this->getModel()->id = Auth::id();
+        }
     }
 }

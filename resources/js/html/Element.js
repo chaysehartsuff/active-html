@@ -228,6 +228,22 @@ export default class Element {
         return paddedCurrentClasses.includes(paddedClassName);
     }
 
+    setStyle(property, value){
+        if (!property || typeof property !== 'string') {
+            throw new Error('Invalid style property');
+        }
+        if (!value || typeof value !== 'string') {
+            throw new Error('Invalid style value');
+        }
+
+        this.setAttribute('style', `${this.attributes.style || ''}${property}: ${value};`);
+
+        if (this.bindedElement) {
+            this.bindedElement.style[property] = value;
+        }
+        return this;
+    }
+
     /**
      * Adds or updates an attribute on the element.
      * If the element is bound to the DOM, updates the actual attribute value and syncs it with

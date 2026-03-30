@@ -1,6 +1,5 @@
 <?php
 
-use ChayseHartsuff\ActiveHtml\Services\Filters\BaseFilter;
 
 return [
     /*
@@ -17,7 +16,6 @@ return [
        // \App\Models\UserImage::class => BaseAll::class
     ],
 
-    'action_filters' => [
-       // \App\Models\UserImage::class => BaseFilter::class
+    'action_processors' => [
     ]
 ];
