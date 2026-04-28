@@ -23,6 +23,7 @@ export { default as QuickActionMenu } from './html/QuickActionMenu.js';
 export { default as Select } from './html/Select.js';
 export { default as TextArea } from './html/TextArea.js';
 export { default as Checkbox } from './html/Checkbox.js';
+export { default as CustomInput } from './html/CustomInput.js';
 
 // 3. Icons
 export { default as CenterAlignIcon } from './html/icons/CenterAlignIcon.js';
@@ -31,6 +32,7 @@ export { default as LeftAlignIcon } from './html/icons/LeftAlignIcon.js';
 export { default as PencilIcon } from './html/icons/PencilIcon.js';
 export { default as PlusIcon } from './html/icons/PlusIcon.js';
 export { default as RightAlignIcon } from './html/icons/RightAlignIcon.js';
+export { default as ReplyIcon } from './html/icons/ReplyIcon.js';
 export { default as SpinnerIcon } from './html/icons/SpinnerIcon.js';
 export { default as ThreeDotsIcon } from './html/icons/ThreeDotsIcon.js';
 export { default as TrashIcon } from './html/icons/TrashIcon.js';

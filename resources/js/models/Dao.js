@@ -10,12 +10,7 @@ export default class Dao {
      */
     static get(model, callback, parameters = {}) {
         this.modelRequest('get', model, (response) => {
-            const ModelClass = model.constructor;
-            const newInstance = new ModelClass();
-            if(response.hasOwnProperty('model')){
-                Object.assign(newInstance, response.model);
-            }
-            callback(newInstance);
+            callback(this.createInstanceFromResponse(model.constructor, response));
         }, parameters);
     }
 
@@ -26,16 +21,7 @@ export default class Dao {
      */
     static getAll(model, callback, parameters = {}) {
         this.modelRequest('getAll', model, (response) => {
-            const ModelClass = model.constructor;
-            let newInstances = [];
-            if(response.hasOwnProperty('models')){
-                newInstances = response.models.map(data => {
-                    const instance = new ModelClass();
-                    Object.assign(instance, data);
-                    return instance;
-                });
-            }
-            callback(newInstances);
+            callback(this.createInstancesFromResponse(model.constructor, response));
         }, parameters);
     }
 
@@ -45,12 +31,7 @@ export default class Dao {
      */
     static create(model, callback, parameters = {}){
         this.modelRequest('create', model, (response) => {
-            const ModelClass = model.constructor;
-            const newInstance = new ModelClass();
-            if(response.hasOwnProperty('model')){
-                Object.assign(newInstance, response.model);
-            }
-            callback(newInstance);
+            callback(this.createInstanceFromResponse(model.constructor, response));
         }, parameters);
     }
 
@@ -60,16 +41,7 @@ export default class Dao {
      */
     static createAll(models, callback, parameters = {}){
         this.modelRequest('createAll', models, (response) => {
-            const ModelClass = models[0].constructor;
-            let newInstances = [];
-            if(response.hasOwnProperty('models')){
-                newInstances = response.models.map(data => {
-                    const instance = new ModelClass();
-                    Object.assign(instance, data);
-                    return instance;
-                });
-            }
-            callback(newInstances);
+            callback(this.createInstancesFromResponse(models[0].constructor, response));
         }, parameters);
     }
 
@@ -79,12 +51,7 @@ export default class Dao {
      */
     static update(model, callback, parameters = {}){
         this.modelRequest('update', model, (response) => {
-            const ModelClass = model.constructor;
-            const newInstance = new ModelClass();
-            if(response.hasOwnProperty('model')){
-                Object.assign(newInstance, response.model);
-            }
-            callback(newInstance);
+            callback(this.createInstanceFromResponse(model.constructor, response));
         }, parameters);
     }
 
@@ -95,16 +62,7 @@ export default class Dao {
      * */
     static updateAll(models, callback, parameters = {}){
         this.modelRequest('updateAll', models, (response) => {
-            const ModelClass = models[0].constructor;
-            let newInstances = [];
-            if(response.hasOwnProperty('models')){
-                newInstances = response.models.map(data => {
-                    const instance = new ModelClass();
-                    Object.assign(instance, data);
-                    return instance;
-                });
-            } 
-            callback(newInstances);
+            callback(this.createInstancesFromResponse(models[0].constructor, response));
         }, parameters);
     }
 
@@ -158,7 +116,15 @@ export default class Dao {
             body.model = modelOrModels.getBody();
         }
 
-        this.request(endpoint, body, callback);
+        return this.request(endpoint, body)
+            .then((data) => {
+                callback(data);
+                return data;
+            })
+            .catch((error) => {
+                console.error('DAO Request Error:', error);
+                throw error;
+            });
     }
 
     /**
@@ -168,7 +134,7 @@ export default class Dao {
      * @param {function} callback The function to call with the response data.
      * @param {string} [method='POST'] The HTTP method to use.
      */
-    static request(endpoint, body, callback, method = 'POST'){
+    static async request(endpoint, body, callback, method = 'POST'){
         const tokenMeta = document.querySelector('meta[name="csrf-token"]');
 
         if (!tokenMeta || !tokenMeta.content) {
@@ -194,15 +160,20 @@ export default class Dao {
             requestOptions.body = JSON.stringify(body);
         }
 
-        fetch(endpoint, requestOptions)
-            .then(response => {
-                return response.json().catch(() => response.text()).then(data => {
-                    callback(data);
-                });
+        const response = await fetch(endpoint, requestOptions);
+        if(callback && typeof callback === 'function'){
+            response.json().catch(() => response.text())
+            .then((data) => {
+                callback(data);
+                return data;
             })
-            .catch(error => {
+            .catch((error) => {
                 console.error('DAO Request Error:', error);
+                throw error;
             });
+        } else {
+            return response.json().catch(() => response.text());
+        }
     }
 
     /**
@@ -325,5 +296,24 @@ export default class Dao {
         } catch (_error) {
             return responseText;
         }
+    }
+
+    static createInstanceFromResponse(ModelClass, response) {
+        const newInstance = new ModelClass();
+        if (response && response.hasOwnProperty('model')) {
+            Object.assign(newInstance, response.model);
+        }
+        return newInstance;
+    }
+    static createInstancesFromResponse(ModelClass, response) {
+        let newInstances = [];
+        if (response && response.hasOwnProperty('models')) {
+            newInstances = response.models.map(data => {
+                const instance = new ModelClass();
+                Object.assign(instance, data);
+                return instance;
+            });
+        }
+        return newInstances;
     }
 }

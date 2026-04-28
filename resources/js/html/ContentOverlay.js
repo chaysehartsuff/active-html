@@ -28,7 +28,7 @@ export default class ContentOverlay extends Element {
         // Add a semi-transparent black background
         this.addClass('bg-black/50');
         // Ensure it's on top of other page content
-        this.addClass('z-50');
+        this.addClass('z-100');
 
         // --- Content Centering ---
         // Use flexbox to center the child element (the slot)

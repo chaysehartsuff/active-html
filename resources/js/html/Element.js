@@ -58,23 +58,32 @@ export default class Element {
      * @param {string|null} key An optional key to associate with the content.
      * @returns {this}
      */
-    addContent(content, key = null){
+    addContent(content, key = null, index = null) {
         if(content instanceof Element || typeof content === 'string'){
             let contentKey = key || crypto.randomUUID();
             if(content instanceof Element && key === null){
                 contentKey = content.getId();
             }
-            this.contentStack.set(contentKey, content);
+            if (index !== null && typeof index === 'number') {
+                const entries = Array.from(this.contentStack.entries());
+                // Prevent duplicate-key collapse when rebuilding the map after splice.
+                const existingIndex = entries.findIndex(([existingKey]) => existingKey === contentKey);
+                if (existingIndex !== -1) {
+                    entries.splice(existingIndex, 1);
+                }
+
+                const normalizedIndex = Math.max(0, Math.min(index, entries.length));
+                entries.splice(normalizedIndex, 0, [contentKey, content]);
+                this.contentStack = new Map(entries);
+            } else {
+                this.contentStack.set(contentKey, content);
+            }
         }else {
             console.error('Content must be of type Element or string');
         }
 
         if (this.bindedElement) {
-            const compiledContent = content instanceof Element ? content.compile() : content;
-            this.bindedElement.insertAdjacentHTML('beforeend', compiledContent);
-            if (content instanceof Element) {
-                content.bindEvents();
-            }
+            this.renderBoundContent();
         }
 
         return this;
@@ -91,32 +100,11 @@ export default class Element {
         if(!this.contentStack.has(key)){
             return this;
         }
-
-        const contentToRemove = this.contentStack.get(key);
-
-        // If the parent and the child element are rendered in the DOM, remove the child element directly.
-        if (this.bindedElement && contentToRemove instanceof Element && contentToRemove.bindedElement) {
-            contentToRemove.bindedElement.remove();
-        } else if (this.bindedElement) {
-            // This case handles strings or elements not properly bound.
-            // The only reliable way to remove them is to re-render the parent's content.
-            console.warn("Content is a string or not a bound element. Re-rendering parent to remove.");
-            this.contentStack.delete(key); // Remove from map first
-            this.bindedElement.innerHTML = Array.from(this.contentStack.values())
-                .map(content => content instanceof Element ? content.compile() : content)
-                .join('');
-            
-            // Re-bind events for remaining children
-            for(const content of this.contentStack.values()) {
-                if (content instanceof Element) {
-                    content.bindEvents();
-                }
-            }
-            return this;
-        }
-
-        // Finally, remove the content from the map.
         this.contentStack.delete(key);
+
+        if (this.bindedElement) {
+            this.renderBoundContent();
+        }
 
         return this;
     }
@@ -129,8 +117,7 @@ export default class Element {
         this.contentStack.clear();
 
         if (this.bindedElement) {
-            this.bindedElement.innerHTML = '';
-            this.bindedElement.textContent = '';
+            this.bindedElement.replaceChildren();
             if ('value' in this.bindedElement) {
                 this.bindedElement.value = '';
             }
@@ -151,29 +138,36 @@ export default class Element {
 
     /**
      * Adds a CSS class to the element's class list, ensuring no duplicates.
-     * @param {string} className The CSS class to add.
+     * Supports single or space-separated class names.
+     * @param {string} className The CSS class(es) to add.
      */
     addClass(className) {
         if (!className || typeof className !== 'string') {
             throw new Error('Invalid class name');
         }
 
+        // Split into individual classes (handles both single and space-separated input)
+        const classNames = className.trim().split(/\s+/);
+
         // Ensure the 'class' property exists, initializing if it doesn't.
         if (!this.attributes.class) {
             this.attributes.class = '';
         }
 
-        // Pad the existing classes and the new class with spaces for an exact match check.
-        const paddedCurrentClasses = ` ${this.attributes.class} `;
-        const paddedClassName = ` ${className} `;
+        // Process each class individually
+        for (const singleClass of classNames) {
+            // Pad the existing classes and the new class with spaces for an exact match check.
+            const paddedCurrentClasses = ` ${this.attributes.class} `;
+            const paddedClassName = ` ${singleClass} `;
 
-        // If the class doesn't already exist, append it.
-        if (!paddedCurrentClasses.includes(paddedClassName)) {
-            // Append with a leading space and trim to handle the initial empty case.
-            this.attributes.class = `${this.attributes.class} ${className}`.trim();
+            // If the class doesn't already exist, append it.
+            if (!paddedCurrentClasses.includes(paddedClassName)) {
+                // Append with a leading space and trim to handle the initial empty case.
+                this.attributes.class = `${this.attributes.class} ${singleClass}`.trim();
 
-            if (this.bindedElement) {
-                this.bindedElement.classList.add(className);
+                if (this.bindedElement) {
+                    this.bindedElement.classList.add(singleClass);
+                }
             }
         }
         return this;
@@ -181,26 +175,32 @@ export default class Element {
 
     /**
      * Removes a CSS class from the element's class list.
-     * @param {string} className The CSS class to remove.
+     * Supports single or space-separated class names.
+     * @param {string} className The CSS class(es) to remove.
      */
     removeClass(className) {
         if (!className || typeof className !== 'string' || !this.attributes.class) {
                 throw new Error('Invalid class name or class list');
         }
 
-        // Pad with spaces for an exact match, just like in addClass.
-        const paddedClassName = ` ${className} `;
+        // Split into individual classes (handles both single and space-separated input)
+        const classNames = className.trim().split(/\s+/);
         
-        // Use a loop to handle cases where a class might have been added multiple times by mistake.
-        while (` ${this.attributes.class} `.includes(paddedClassName)) {
-            this.attributes.class = ` ${this.attributes.class} `.replace(paddedClassName, ' ').trim();
-        }
-
-        // Clean up any resulting double spaces.
-        this.attributes.class = this.attributes.class.replace(/\s+/g, ' ');
-
-        if (this.bindedElement) {
-            this.bindedElement.classList.remove(className);
+        // Process each class individually
+        for (const singleClass of classNames) {
+            const paddedClassName = ` ${singleClass} `;
+            
+            // Remove all occurrences of this class
+            while (` ${this.attributes.class} `.includes(paddedClassName)) {
+                this.attributes.class = ` ${this.attributes.class} `.replace(paddedClassName, ' ').trim();
+            }
+            
+            // Clean up any resulting double spaces
+            this.attributes.class = this.attributes.class.replace(/\s+/g, ' ');
+            
+            if (this.bindedElement) {
+                this.bindedElement.classList.remove(singleClass);
+            }
         }
 
         return this;
@@ -271,6 +271,18 @@ export default class Element {
      */
     addAttribute(key, value) {
         return this.setAttribute(key, value);
+    }
+
+    removeAttribute(key) {
+        if (!key || typeof key !== 'string') {
+            throw new Error('Invalid attribute key');
+        }
+        delete this.attributes[key];
+        
+        if (this.bindedElement) {
+            this.bindedElement.removeAttribute(key);
+        }
+        return this;
     }
     /**
      * Gets the attribute from the element.
@@ -520,7 +532,7 @@ export default class Element {
 
     /**
      * Binds everything to the binded element in the DOM.
-     * @returns 
+     * @returns {Element} The current element instance for chaining.
      */
     bindAll() {
         return this.bindAttributes().bindProperties().bindEvents();
@@ -540,11 +552,87 @@ export default class Element {
         return this;
     }
 
+    /**
+     * Creates an Element instance by hydrating data from an existing DOM element id.
+     * This performs a best-effort reverse bind and returns null if the id cannot be resolved.
+     * @param {string} id
+     * @returns {Element|null}
+     */
+    static createInstanceFromId(id) {
+        if (!id || typeof id !== 'string') {
+            console.warn('createInstanceFromId: Invalid id provided.');
+            return null;
+        }
+
+        if (typeof document === 'undefined' || typeof document.getElementById !== 'function') {
+            console.warn('createInstanceFromId: document is not available in this environment.');
+            return null;
+        }
+
+        const domElement = document.getElementById(id);
+        if (!(domElement instanceof HTMLElement)) {
+            console.warn(`createInstanceFromId: Element with id "${id}" not found.`);
+            return null;
+        }
+
+        const hydratedElement = new Element(domElement.tagName.toLowerCase());
+
+        // Reset defaults from constructor so hydrated data reflects the DOM source.
+        hydratedElement.attributes = {};
+        hydratedElement.properties = {};
+        hydratedElement.events = {};
+        hydratedElement.contentStack = new Map();
+        hydratedElement.listeners = new Map();
+
+        for (const attr of Array.from(domElement.attributes || [])) {
+            hydratedElement.attributes[attr.name] = attr.value;
+        }
+
+        // Best-effort property snapshot for common interactive element state.
+        const propertyKeys = ['id', 'value', 'checked', 'selected', 'disabled', 'readOnly', 'textContent', 'innerText'];
+        for (const key of propertyKeys) {
+            if (key in domElement) {
+                try {
+                    hydratedElement.properties[key] = domElement[key];
+                } catch (e) {
+                    console.warn(`createInstanceFromId: Unable to read property "${key}".`);
+                }
+            }
+        }
+        hydratedElement.setId(id);
+
+        // Inline on* attributes can be detected, but function listener bodies cannot be reconstructed safely.
+        for (const attr of Array.from(domElement.attributes || [])) {
+            if (attr.name.startsWith('on')) {
+                console.warn(`createInstanceFromId: Inline DOM event "${attr.name}" cannot be reconstructed as framework events.`);
+            }
+        }
+
+        // Reverse hydration uses one raw innerHTML entry by design.
+        hydratedElement.addContent(domElement.innerHTML || '', 'dom-inner-html');
+
+        // Bind through the standard framework path so behavior matches normal instances.
+        hydratedElement.bindEvents();
+
+        if (!(hydratedElement.bindedElement instanceof HTMLElement)) {
+            console.warn(`createInstanceFromId: Failed to bind element with id "${id}".`);
+            return null;
+        }
+
+        return hydratedElement;
+    }
+
     compile(){
         const props = Object.entries(this.attributes)
             .map(([key, value]) => `${key}="${value}"`)
             .join(' ');
 
+        const contentHtml = this.compileContentStackHtml();
+
+        return `<${this.rootTag} ${props}>${contentHtml}</${this.rootTag}>`;
+    }
+
+    compileContentStackHtml() {
         let contentHtml = '';
         for (const content of this.contentStack.values()) {
             if (content instanceof Element) {
@@ -553,7 +641,26 @@ export default class Element {
                 contentHtml += content;
             }
         }
+        return contentHtml;
+    }
 
-        return `<${this.rootTag} ${props}>${contentHtml}</${this.rootTag}>`;
+    renderBoundContent() {
+        if (!this.bindedElement) {
+            return this;
+        }
+
+        const contentHtml = this.compileContentStackHtml();
+        const range = document.createRange();
+        range.selectNodeContents(this.bindedElement);
+        const fragment = range.createContextualFragment(contentHtml);
+        this.bindedElement.replaceChildren(fragment);
+
+        for (const content of this.contentStack.values()) {
+            if (content instanceof Element) {
+                content.bindEvents();
+            }
+        }
+
+        return this;
     }
 }

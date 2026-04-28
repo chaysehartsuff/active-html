@@ -37,6 +37,27 @@ class ActionProcessService
             }
         }
 
+        // REMOVED DUPLICATES BUT ONLY FROM THE ORDER BASED PROCESSORS (run_before, run_first, run_last, run_after)
+        $this->_run_before_processors = array_values(array_filter(
+            $this->_run_before_processors,
+            fn($p) => !in_array($p, $processors, true)
+        ));
+
+        $this->_run_after_processors = array_values(array_filter(
+            $this->_run_after_processors,
+            fn($p) => !in_array($p, $processors, true)
+        ));
+
+        if ($this->_run_first_processor && in_array($this->_run_first_processor, $processors, true)) {
+            $this->_run_first_processor = null;
+        }
+
+        if ($this->_run_last_processor && in_array($this->_run_last_processor, $processors, true)) {
+            $this->_run_last_processor = null;
+        }
+
+
+        // MERGE PROCESSORS IN THE CORRECT ORDER
         if (!empty($this->_run_before_processors)) {
             $processors = array_merge($this->_run_before_processors, $processors);
         }

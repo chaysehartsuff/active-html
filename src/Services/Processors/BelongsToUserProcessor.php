@@ -20,5 +20,11 @@ class BelongsToUserProcessor extends BaseProcessor {
             # prevent results if not authorized
             $this->getQuery()->whereRaw('1 = 0');
         }
+        if($this->isAction(Action::CREATE) 
+            || $this->isAction(Action::UPDATE) 
+            || $this->isAction(Action::CREATE_ALL) 
+            || $this->isAction(Action::UPDATE_ALL)){
+            $this->getModel()->user_id = Auth::id();
+        }
     }
 }

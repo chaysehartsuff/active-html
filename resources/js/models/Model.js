@@ -35,13 +35,29 @@ export default class Model {
      * Fetches the model's data from the server.
      * @returns {Promise<Model>}
      */
-    get(parameters = {}, callback = null) {
-        const response = Dao.modelRequestSync('get', this, parameters);
-        this.extractModelFromResponse(response);
-        if (callback) {
-            callback(response);
+    get(parameters = {}, callback = null, async = true) {
+        if (!async) {
+            const response = Dao.modelRequestSync('get', this, parameters);
+            this.extractModelFromResponse(response);
+            if (callback) {
+                callback(response);
+            }
+            return this;
         }
-        return this;
+
+        const request = Dao.modelRequest('get', this, (response) => {
+            this.extractModelFromResponse(response);
+            if (callback) {
+                callback(response);
+            }
+        }, parameters);
+
+        if (callback) {
+            request.catch(() => null);
+            return this;
+        }
+
+        return request.then(() => this);
     }
     /**
      * Fetches the model's data from the server synchronously.
@@ -58,13 +74,29 @@ export default class Model {
      * Creates a new record on the server.
      * @returns {Promise<Model>}
      */
-    create(parameters = {}, callback = null) {
-        const response = Dao.modelRequestSync('create', this, parameters);
-        this.extractModelFromResponse(response);
-        if (callback) {
-            callback(response);
+    create(parameters = {}, callback = null, async = true) {
+        if (!async) {
+            const response = Dao.modelRequestSync('create', this, parameters);
+            this.extractModelFromResponse(response);
+            if (callback) {
+                callback(response);
+            }
+            return this;
         }
-        return this;
+
+        const request = Dao.modelRequest('create', this, (response) => {
+            this.extractModelFromResponse(response);
+            if (callback) {
+                callback(response);
+            }
+        }, parameters);
+
+        if (callback) {
+            request.catch(() => null);
+            return this;
+        }
+
+        return request.then(() => this);
     }
     /**
      * Creates a new record on the server synchronously.
@@ -81,13 +113,29 @@ export default class Model {
      * Updates the record on the server.
      * @returns {Promise<Model>}
      */
-    update(parameters = {}, callback = null) {
-        const response = Dao.modelRequestSync('update', this, parameters);
-        this.extractModelFromResponse(response);
-        if (callback) {
-            callback(response);
+    update(parameters = {}, callback = null, async = true) {
+        if (!async) {
+            const response = Dao.modelRequestSync('update', this, parameters);
+            this.extractModelFromResponse(response);
+            if (callback) {
+                callback(response);
+            }
+            return this;
         }
-        return this;
+
+        const request = Dao.modelRequest('update', this, (response) => {
+            this.extractModelFromResponse(response);
+            if (callback) {
+                callback(response);
+            }
+        }, parameters);
+
+        if (callback) {
+            request.catch(() => null);
+            return this;
+        }
+
+        return request.then(() => this);
     }
     /**
      * Updates the record on the server synchronously.
@@ -104,12 +152,27 @@ export default class Model {
      * Deletes the record from the server.
      * @returns {Promise<string>}
      */
-    delete(parameters = {}, callback = null) {
-        const response = Dao.modelRequestSync('delete', this, parameters);
-        if (callback) {
-            callback(response);
+    delete(parameters = {}, callback = null, async = true) {
+        if (!async) {
+            const response = Dao.modelRequestSync('delete', this, parameters);
+            if (callback) {
+                callback(response);
+            }
+            return response;
         }
-        return response;
+
+        const request = Dao.modelRequest('delete', this, (response) => {
+            if (callback) {
+                callback(response);
+            }
+        }, parameters);
+
+        if (callback) {
+            request.catch(() => null);
+            return this;
+        }
+
+        return request;
     }
     /**
      * Deletes the record from the server synchronously.

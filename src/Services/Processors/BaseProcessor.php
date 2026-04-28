@@ -49,7 +49,9 @@ class BaseProcessor {
 
     protected function run(){
         if(empty($this->getErrors())){
+            /** @var \Illuminate\Database\Eloquent\Builder $query */
             $query = $this->getQuery();
+            /** @var \Illuminate\Database\Eloquent\Model $model */
             $model = $this->getModel();
             switch ($this->getAction()){
                 case Action::GET:
