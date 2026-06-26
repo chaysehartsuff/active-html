@@ -21,4 +21,18 @@ export default class Option extends Element {
         this.addAttribute('selected', true);
         return this;
     }
+
+    /**
+     * Set conditional selected state for this option.
+     * @param {*} selected 
+     * @returns 
+     */
+    selected(selected = true) {
+        if (selected) {
+            this.addAttribute('selected', true);
+        } else {
+            this.removeAttribute('selected');
+        }
+        return this;
+    }
 }

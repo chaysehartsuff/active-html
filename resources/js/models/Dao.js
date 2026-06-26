@@ -93,8 +93,9 @@ export default class Dao {
      * @param {Model|Model[]} modelOrModels The model or models to act upon.
      * @param {function} callback The function to call with the response.
      * @param {object} [parameters={}] Additional query parameters to include in the request.
+     * @param {object} [body={}] The request payload.
      */
-    static modelRequest(action, modelOrModels, callback, parameters = {}) {
+    static modelRequest(action, modelOrModels, callback, parameters = {}, body = {}) {
         if (!modelOrModels) {
             throw new Error('A model or array of models must be provided.');
         }
@@ -108,7 +109,6 @@ export default class Dao {
         const isArray = Array.isArray(modelOrModels);
         const queryString = new URLSearchParams(Object.entries(parameters)).toString();
         const endpoint = queryString ? "/model/" + action + "?" + queryString : "/model/" + action;
-        let body = {};
 
         if (isArray) {
             body.models = modelOrModels.map(m => m.getBody());

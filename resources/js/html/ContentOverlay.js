@@ -16,7 +16,7 @@ export default class ContentOverlay extends Element {
      * Creates a full-screen overlay to center content.
      * @param {Element} slot The content element to display in the center.
      */
-    constructor(slot) {
+    constructor(slot, z_index = 100) {
         super();
         this.slot = slot;
 
@@ -28,7 +28,7 @@ export default class ContentOverlay extends Element {
         // Add a semi-transparent black background
         this.addClass('bg-black/50');
         // Ensure it's on top of other page content
-        this.addClass('z-100');
+        this.addClass(`z-${z_index}`);
 
         // --- Content Centering ---
         // Use flexbox to center the child element (the slot)
@@ -40,13 +40,6 @@ export default class ContentOverlay extends Element {
         if (this.slot) {
             this.addContent(this.slot);
         }
-        this.onEvent('click', this.onClose.bind(this));
     }
 
-    onClose(e) {
-        if (e.target === this.bindedElement) {
-            this.hide();
-            this.event(ContentOverlay.onCloseEvent, e);
-        }
-    }
 }

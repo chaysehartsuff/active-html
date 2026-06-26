@@ -58,9 +58,21 @@ export default class Element {
      * @param {string|null} key An optional key to associate with the content.
      * @returns {this}
      */
-    addContent(content, key = null, index = null) {
+    addContent(content = null, key = null, index = null) {
+        let contentKey = null;
+        let normalizedIndex = null;
+
+        if(content === null || content === undefined){
+            content = '';
+        }
+
+        // if content is number, convert to string
+        if (typeof content === 'number') {
+            content = content.toString();
+        }
+
         if(content instanceof Element || typeof content === 'string'){
-            let contentKey = key || crypto.randomUUID();
+            contentKey = key || crypto.randomUUID();
             if(content instanceof Element && key === null){
                 contentKey = content.getId();
             }
@@ -72,7 +84,7 @@ export default class Element {
                     entries.splice(existingIndex, 1);
                 }
 
-                const normalizedIndex = Math.max(0, Math.min(index, entries.length));
+                normalizedIndex = Math.max(0, Math.min(index, entries.length));
                 entries.splice(normalizedIndex, 0, [contentKey, content]);
                 this.contentStack = new Map(entries);
             } else {
@@ -83,7 +95,7 @@ export default class Element {
         }
 
         if (this.bindedElement) {
-            this.renderBoundContent();
+            this.renderBoundContentIncremental(content, contentKey, normalizedIndex);
         }
 
         return this;
@@ -100,10 +112,11 @@ export default class Element {
         if(!this.contentStack.has(key)){
             return this;
         }
+        const contentToRemove = this.contentStack.get(key);
         this.contentStack.delete(key);
 
         if (this.bindedElement) {
-            this.renderBoundContent();
+            this.removeBoundContentIncremental(contentToRemove);
         }
 
         return this;
@@ -134,6 +147,21 @@ export default class Element {
     setContent(content){
         this.clearContent();
         return this.addContent(content);
+    }
+
+    /**
+     * Checks if the content stack has content by key or Element instance
+     * @param {String|Element} key 
+     * @returns {boolean}
+     */
+    hasContent(key){
+        if(typeof key === 'string'){
+            return this.contentStack.has(key);
+        }
+        if(key instanceof Element){
+            return this.contentStack.has(key.getId());
+        }
+        return false;
     }
 
     /**
@@ -535,7 +563,43 @@ export default class Element {
      * @returns {Element} The current element instance for chaining.
      */
     bindAll() {
-        return this.bindAttributes().bindProperties().bindEvents();
+        return this.bindEvents().bindAttributes().bindProperties();
+    }
+
+    /**
+     * Binds the element to the DOM by its ID. If the element does not exist in the DOM, it will be created and appended to the body.
+     * @returns 
+     */
+    bindToDom() {
+        if (typeof document === 'undefined' || !(document.body instanceof HTMLElement)) {
+            console.error('Cannot bind to DOM: document.body is not available.');
+            return this;
+        }
+
+        const elementId = this.getId();
+        if (!elementId) {
+            console.error('Cannot bind to DOM: Element has no ID set.');
+            return this;
+        }
+
+        const existingElement = document.getElementById(elementId);
+        if (existingElement instanceof HTMLElement) {
+            this.bindedElement = existingElement;
+            return this.bindAll();
+        }
+
+        const template = document.createElement('template');
+        template.innerHTML = this.compile().trim();
+        const rootNode = template.content.firstElementChild;
+
+        if (!(rootNode instanceof HTMLElement)) {
+            console.error('Cannot bind to DOM: Compiled element did not produce a valid root node.');
+            return this;
+        }
+
+        document.body.appendChild(template.content);
+
+        return this.bindAll();
     }
 
     addListener(key, callback) {
@@ -660,6 +724,87 @@ export default class Element {
                 content.bindEvents();
             }
         }
+
+        return this;
+    }
+
+    renderBoundContentIncremental(content, contentKey, normalizedIndex = null) {
+        if (!this.bindedElement) {
+            return this;
+        }
+
+        if (normalizedIndex === null) {
+            // Append-only path: preserve DOM from external systems (e.g., Quill) inside this node.
+            if (content instanceof Element) {
+                const existingNode = document.getElementById(content.getId());
+                if (existingNode && existingNode.parentNode === this.bindedElement) {
+                    return this;
+                }
+
+                const range = document.createRange();
+                range.selectNodeContents(this.bindedElement);
+                const fragment = range.createContextualFragment(content.compile());
+                this.bindedElement.appendChild(fragment);
+                content.bindEvents();
+            } else {
+                this.bindedElement.insertAdjacentHTML('beforeend', content);
+            }
+
+            return this;
+        }
+
+        const orderedValues = Array.from(this.contentStack.values());
+        let referenceNode = null;
+
+        // Find the next bound Element after the inserted index and insert before it.
+        for (let i = normalizedIndex + 1; i < orderedValues.length; i++) {
+            const candidate = orderedValues[i];
+            if (candidate instanceof Element) {
+                referenceNode = candidate.bindedElement || document.getElementById(candidate.getId());
+                if (referenceNode && referenceNode.parentNode !== this.bindedElement) {
+                    referenceNode = null;
+                }
+                if (referenceNode) {
+                    break;
+                }
+            }
+        }
+
+        if (content instanceof Element) {
+            const existingNode = document.getElementById(content.getId());
+            if (existingNode && existingNode.parentNode === this.bindedElement) {
+                existingNode.remove();
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(this.bindedElement);
+            const fragment = range.createContextualFragment(content.compile());
+            this.bindedElement.insertBefore(fragment, referenceNode);
+            content.bindEvents();
+        } else {
+            const range = document.createRange();
+            range.selectNodeContents(this.bindedElement);
+            const fragment = range.createContextualFragment(content);
+            this.bindedElement.insertBefore(fragment, referenceNode);
+        }
+
+        return this;
+    }
+
+    removeBoundContentIncremental(content) {
+        if (!this.bindedElement || content === undefined || content === null) {
+            return this;
+        }
+
+        if (content instanceof Element) {
+            const targetNode = content.bindedElement || document.getElementById(content.getId());
+            if (targetNode && targetNode.parentNode === this.bindedElement) {
+                targetNode.remove();
+            }
+        }
+
+        // String removals are intentionally no-op for incremental mode because text nodes are not keyed.
+        // Call renderBoundContent() explicitly only where full child replacement is desired.
 
         return this;
     }

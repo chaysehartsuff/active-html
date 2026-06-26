@@ -7,9 +7,15 @@ export default class QuickActionMenu extends Element {
 
     /**
      * The element that triggers this menu to open.
-     * @type {HTMLElement}
+     * @type {Element|null}
      */
     triggerElement;
+
+    /**
+     * Global click handler reference for cleanup.
+     * @type {Function|null}
+     */
+    outsideClickHandler;
 
     static get onCloseEvent() { return 'onClose'; }
 
@@ -20,6 +26,7 @@ export default class QuickActionMenu extends Element {
     constructor(triggerElement = null) {
         super();
         this.triggerElement = null;
+        this.outsideClickHandler = null;
 
         if(triggerElement instanceof Element) {
             this.setTrigger(triggerElement);
@@ -43,14 +50,30 @@ export default class QuickActionMenu extends Element {
     bindEvents() {
         super.bindEvents();
 
-        document.addEventListener('click', (e) => {
-            const isClickInsideMenu = this.bindedElement && this.bindedElement.contains(e.target);
-            const isClickOnTrigger = this.triggerElement && this.triggerElement.contains(e.target);
+        if (this.outsideClickHandler) {
+            return;
+        }
 
+        this.outsideClickHandler = (e) => {
+            const menuElement = this.bindedElement;
+            const triggerDomElement = this.getTriggerDomElement();
+            const target = e.target;
+
+            const isClickInsideMenu = Boolean(menuElement && target && menuElement.contains(target));
+            const isClickOnTrigger = Boolean(triggerDomElement && target && triggerDomElement.contains(target));
+
+            // Close only when click is outside both the menu and its trigger.
             if (!isClickInsideMenu && !isClickOnTrigger) {
                 this.onClose(e);
             }
-        });
+        };
+
+        // Delay attachment so the click that opens the menu doesn't instantly close it.
+        setTimeout(() => {
+            if (this.outsideClickHandler) {
+                document.addEventListener('click', this.outsideClickHandler);
+            }
+        }, 0);
     }
 
     /**
@@ -58,8 +81,15 @@ export default class QuickActionMenu extends Element {
      * @param {Element} element 
      */
     setTrigger(element) {
-        this.triggerElement = element.bindedElement;
+        this.triggerElement = element;
         return this;
+    }
+
+    getTriggerDomElement() {
+        if (!this.triggerElement) {
+            return null;
+        }
+        return this.triggerElement.bindedElement || document.getElementById(this.triggerElement.getId());
     }
 
 
@@ -100,6 +130,10 @@ export default class QuickActionMenu extends Element {
     }
 
     onClose(e) {
+        if (this.outsideClickHandler) {
+            document.removeEventListener('click', this.outsideClickHandler);
+            this.outsideClickHandler = null;
+        }
         this.hide();
         this.event(QuickActionMenu.onCloseEvent, e);
     }

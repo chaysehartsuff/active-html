@@ -21,6 +21,16 @@ export default class Checkbox extends Element {
         return this.bindedElement ? this.bindedElement.checked : null;
     }
 
+    setChecked(isChecked) {
+        if(isChecked){
+            this.setAttribute('checked','checked');
+        } else{
+            this.removeAttribute('checked');
+        }
+        this.setProperty('checked', isChecked);
+        return this;
+    }
+
     onChange(e) {
         if(e.target === this.bindedElement) {
             if(!this.checked()){

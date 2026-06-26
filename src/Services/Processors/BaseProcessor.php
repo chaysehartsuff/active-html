@@ -29,6 +29,7 @@ class BaseProcessor {
      */
     private $_errors = [];
     private $_response = [];
+    private $_abort_processing = false;
     /**
      * The base processor that does nothing.
      * 
@@ -61,6 +62,9 @@ class BaseProcessor {
                     $this->setModels($query->get());
                     break;
                 case Action::UPDATE:
+                    if(!isset($model->id)){
+                        return;
+                    }
                     $existingModel = $query->find($model->id);
                     $existingModel->fill($model->getAttributes());
                     $existingModel->save();
@@ -82,7 +86,9 @@ class BaseProcessor {
                     $this->setModels($modelsToSave);
                     break;
                 case Action::DELETE:
-                    $this->setResponse('deleted', $model->delete());
+                    $existingModel = $query->find($model->id);
+                    $existingModel->fill($model->getAttributes());
+                    $this->setResponse('deleted', $existingModel->delete());
                     break;
                 case Action::DELETE_ALL:
                     $deletedCount = 0;
@@ -103,11 +109,13 @@ class BaseProcessor {
      * @param mixed $attributes
      * @return void
      */
-    protected function validate($rules = [], $messages = [], $attributes = []){
-        $data = [];
+    protected function validate($rules = [], $messages = [], $attributes = [], $data = null){
+        if ($data === null) {
+            $data = [];
 
-        foreach (array_keys($rules) as $field) {
-            $data[$field] = data_get($this->_model, $field);
+            foreach (array_keys($rules) as $field) {
+                $data[$field] = data_get($this->_model, $field);
+            }
         }
 
         $validator = Validator::make($data, $rules, $messages, $attributes);
@@ -170,6 +178,19 @@ class BaseProcessor {
 
     public function getErrors(){
         return $this->_errors;
+    }
+
+    /**
+     * Checks if the process should be aborted.
+     * Set further processes to be aborted.
+     * @param bool|null $abort
+     * @return bool
+     */
+    public function abortProcessing($abort = null){
+        if ($abort !== null) {
+            $this->_abort_processing = (bool)$abort;
+        }
+        return $this->_abort_processing;
     }
 
     public function getResponse(){

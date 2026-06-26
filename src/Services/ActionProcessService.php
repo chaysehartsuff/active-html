@@ -89,6 +89,9 @@ class ActionProcessService
                 $models = $result->getModels();
                 $query = $result->getQuery();
                 $last_response = $result->getResponse();
+                if ($result->abortProcessing()) {
+                    break;
+                }
             } catch (InvalidRequestInput $e) {
                 $last_response = [
                     'errors' => $e->errors(),
