@@ -686,9 +686,25 @@ export default class Element {
         return hydratedElement;
     }
 
+    /**
+     * Escapes HTML special characters in attribute values to prevent HTML injection.
+     * @param {*} value The attribute value to escape.
+     * @returns {string} The escaped value.
+     */
+    escapeHtmlAttribute(value) {
+        if (typeof value !== 'string') {
+            value = String(value);
+        }
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     compile(){
         const props = Object.entries(this.attributes)
-            .map(([key, value]) => `${key}="${value}"`)
+            .map(([key, value]) => `${key}="${this.escapeHtmlAttribute(value)}"`)
             .join(' ');
 
         const contentHtml = this.compileContentStackHtml();
