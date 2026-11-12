@@ -94,8 +94,9 @@ export default class Dao {
      * @param {function} callback The function to call with the response.
      * @param {object} [parameters={}] Additional query parameters to include in the request.
      * @param {object} [body={}] The request payload.
+     * @param {function(ProgressEvent): void} [progressCallback] Upload progress listener.
      */
-    static modelRequest(action, modelOrModels, callback, parameters = {}, body = {}) {
+    static modelRequest(action, modelOrModels, callback, parameters = {}, body = {}, progressCallback = undefined) {
         if (!modelOrModels) {
             throw new Error('A model or array of models must be provided.');
         }
@@ -116,7 +117,11 @@ export default class Dao {
             body.model = modelOrModels.getBody();
         }
 
-        return this.request(endpoint, body)
+        const request = progressCallback == null
+            ? this.request(endpoint, body)
+            : this.request(endpoint, body, undefined, 'POST', progressCallback);
+
+        return request
             .then((data) => {
                 callback(data);
                 return data;
@@ -133,8 +138,13 @@ export default class Dao {
      * @param {object} body The request payload.
      * @param {function} callback The function to call with the response data.
      * @param {string} [method='POST'] The HTTP method to use.
+     * @param {function(ProgressEvent): void} [progressCallback] Upload progress listener. Uses XMLHttpRequest when supplied.
      */
-    static async request(endpoint, body, callback, method = 'POST'){
+    static async request(endpoint, body, callback, method = 'POST', progressCallback = undefined){
+        if (progressCallback != null && typeof progressCallback !== 'function') {
+            throw new TypeError('Progress callback must be a function.');
+        }
+
         const tokenMeta = document.querySelector('meta[name="csrf-token"]');
 
         if (!tokenMeta || !tokenMeta.content) {
@@ -160,7 +170,20 @@ export default class Dao {
             requestOptions.body = JSON.stringify(body);
         }
 
-        const response = await fetch(endpoint, requestOptions);
+        const response = progressCallback == null
+            ? await fetch(endpoint, requestOptions)
+            : await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open(requestOptions.method, endpoint, true);
+                for (const [name, value] of Object.entries(headers)) {
+                    xhr.setRequestHeader(name, value);
+                }
+                xhr.upload.addEventListener('progress', progressCallback);
+                xhr.onload = () => resolve(new Response(xhr.responseText));
+                xhr.onerror = () => reject(new TypeError('Network request failed.'));
+                xhr.onabort = () => reject(new DOMException('Request aborted.', 'AbortError'));
+                xhr.send(requestOptions.body ?? null);
+            });
         if(callback && typeof callback === 'function'){
             response.json().catch(() => response.text())
             .then((data) => {

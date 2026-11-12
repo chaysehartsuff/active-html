@@ -273,6 +273,40 @@ export default class Element {
     }
 
     /**
+     * Per-property style cache used by setStyleProperty() so repeated calls (e.g. every animation frame)
+     * update in place instead of endlessly concatenating onto the `style` attribute like setStyle() does.
+     * @type {object}
+     */
+    styleProperties = {};
+
+    /**
+     * Sets a single CSS property (including custom properties) without accumulating duplicate
+     * declarations in the style attribute. Safe to call every animation frame, unlike setStyle().
+     * @param {string} property
+     * @param {string} value
+     * @returns {this}
+     */
+    setStyleProperty(property, value) {
+        if (!property || typeof property !== 'string') {
+            throw new Error('Invalid style property');
+        }
+        if (typeof value !== 'string') {
+            throw new Error('Invalid style value');
+        }
+
+        this.styleProperties[property] = value;
+        this.attributes.style = Object.entries(this.styleProperties)
+            .map(([key, val]) => `${key}: ${val};`)
+            .join(' ');
+
+        if (this.bindedElement) {
+            this.bindedElement.style.setProperty(property, value);
+        }
+
+        return this;
+    }
+
+    /**
      * Adds or updates an attribute on the element.
      * If the element is bound to the DOM, updates the actual attribute value and syncs it with
      * @param {string} key The property key (attribute name).
@@ -639,6 +673,21 @@ export default class Element {
             return null;
         }
 
+        return Element.createInstanceFromDomElement(domElement);
+    }
+
+    /**
+     * Creates an Element instance by hydrating data from an existing DOM element.
+     * This performs a best-effort reverse bind and returns null if binding fails.
+     * @param {HTMLElement} domElement
+     * @returns {Element|null}
+     */
+    static createInstanceFromDomElement(domElement) {
+        if (!(domElement instanceof HTMLElement)) {
+            console.warn('createInstanceFromDomElement: Invalid DOM element provided.');
+            return null;
+        }
+
         const hydratedElement = new Element(domElement.tagName.toLowerCase());
 
         // Reset defaults from constructor so hydrated data reflects the DOM source.
@@ -652,23 +701,37 @@ export default class Element {
             hydratedElement.attributes[attr.name] = attr.value;
         }
 
-        // Best-effort property snapshot for common interactive element state.
-        const propertyKeys = ['id', 'value', 'checked', 'selected', 'disabled', 'readOnly', 'textContent', 'innerText'];
+        // Snapshot every readable DOM property found on the instance/prototype chain.
+        const propertyKeys = new Set();
+        let currentPrototype = domElement;
+
+        while (currentPrototype && currentPrototype !== Object.prototype) {
+            for (const key of Object.getOwnPropertyNames(currentPrototype)) {
+                propertyKeys.add(key);
+            }
+            currentPrototype = Object.getPrototypeOf(currentPrototype);
+        }
+
         for (const key of propertyKeys) {
-            if (key in domElement) {
-                try {
-                    hydratedElement.properties[key] = domElement[key];
-                } catch (e) {
-                    console.warn(`createInstanceFromId: Unable to read property "${key}".`);
-                }
+            try {
+                hydratedElement.properties[key] = domElement[key];
+            } catch (e) {
+                console.warn(`createInstanceFromDomElement: Unable to read property "${key}".`);
             }
         }
-        hydratedElement.setId(id);
+
+        if (domElement.id) {
+            hydratedElement.setId(domElement.id);
+        } else {
+            const generatedId = crypto.randomUUID();
+            domElement.id = generatedId;
+            hydratedElement.setId(generatedId);
+        }
 
         // Inline on* attributes can be detected, but function listener bodies cannot be reconstructed safely.
         for (const attr of Array.from(domElement.attributes || [])) {
             if (attr.name.startsWith('on')) {
-                console.warn(`createInstanceFromId: Inline DOM event "${attr.name}" cannot be reconstructed as framework events.`);
+                console.warn(`createInstanceFromDomElement: Inline DOM event "${attr.name}" cannot be reconstructed as framework events.`);
             }
         }
 
@@ -679,7 +742,7 @@ export default class Element {
         hydratedElement.bindEvents();
 
         if (!(hydratedElement.bindedElement instanceof HTMLElement)) {
-            console.warn(`createInstanceFromId: Failed to bind element with id "${id}".`);
+            console.warn('createInstanceFromDomElement: Failed to bind element.');
             return null;
         }
 

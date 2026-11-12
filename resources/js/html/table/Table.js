@@ -32,6 +32,7 @@ export default class Table extends Element {
         search_default: null, // default search value for the column
         search_element: null, // overrides default text search with a custom search element
         hideable: false, // whether this column can be hidden by the user
+        escape_content: false,
     };
 
     /**
@@ -57,11 +58,15 @@ export default class Table extends Element {
         show_pagination: true,
         show_per_page: true,
         show_hideable_columns: true,
+        show_row_actions: true,
     }
 
     rowActions = {
         edit: 'Edit',
     };
+
+    /** @type {Object} Custom select options, either value/label pairs or grouped by column name. */
+    custom_select_options = {};
 
 
     /** @type {Element} table */
@@ -92,8 +97,13 @@ export default class Table extends Element {
      * Dynamic table component for rendering tabular data from a model.
      * @param {String} elementId 
      * @param {Model} model 
+     * @param {Object[]} columns
+     * @param {Object} columnFormats
+     * @param {Object} filterOptions
+     * @param {Object} viewOptions
+     * @param {Object} customSelectOptions Value/label pairs, or pairs grouped by column name. '*' clears the filter.
      */
-    constructor(elementId, model, columns = [], columnFormats = {}, filterOptions = {}, viewOptions = {}) {
+    constructor(elementId, model, columns = [], columnFormats = {}, filterOptions = {}, viewOptions = {}, customSelectOptions = {}) {
         super();
         this.table = new Element();
         this.model = model;
@@ -101,6 +111,7 @@ export default class Table extends Element {
         this.columnFormats = {...this.columnFormats, ...columnFormats};
         this.filterOptions = {...this.filterOptions, ...filterOptions};
         this.viewOptions = {...this.viewOptions, ...viewOptions};
+        this.custom_select_options = {...this.custom_select_options, ...customSelectOptions};
 
         this.addClass("w-full border border-gray-200 rounded-lg overflow-hidden bg-white");
         this.createSearchBar();
@@ -312,6 +323,7 @@ export default class Table extends Element {
     }
 
     createSearchInputByColumn(columnName) {
+        this.activeSearchColumn = columnName;
         if(columnName === '*'){
             this.searchInput = new Element('input')
                 .setAttribute('type', 'text')
@@ -341,6 +353,36 @@ export default class Table extends Element {
         }
         // LAST PRIORITY: Use a default search element based on column type
         switch (column.type) {
+            case FieldType.CUSTOM_SELECT: {
+                this.searchInput = new Element('select')
+                    .addClass('w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-300');
+                const columnOptions = this.custom_select_options[column.name];
+                const groupedOptions = Object.values(this.custom_select_options)
+                    .some(value => value !== null && typeof value === 'object');
+                const options = groupedOptions ? (columnOptions || {}) : this.custom_select_options;
+                if (Object.hasOwn(options, '*')) {
+                    this.searchInput.addContent(
+                        new Element('option').setAttribute('value', '*').addContent(this.searchInput.escapeHtmlAttribute(options['*']))
+                    );
+                }
+                for (const [value, label] of Object.entries(options)) {
+                    if (value !== '*') {
+                        this.searchInput.addContent(
+                            new Element('option').setAttribute('value', value).addContent(this.searchInput.escapeHtmlAttribute(label))
+                        );
+                    }
+                }
+                this.searchInput.onEvent('change', () => {
+                    this.clearAllColumnFilters();
+                    const value = this.searchInput.getValue();
+                    if (value !== '*') {
+                        this.setColumnFilter(column.name, value);
+                    }
+                    this.filterOptions.page = 1;
+                    this.fetchRows();
+                });
+                break;
+            }
             case FieldType.BOOLEAN:
                 this.searchInput = new Element('select')
                     .addClass('w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-300');
@@ -426,7 +468,7 @@ export default class Table extends Element {
     }
 
     createHeader() {
-        let totalColumns = this.columns.length + 1;
+        let totalColumns = this.columns.length + (this.viewOptions.show_row_actions ? 1 : 0);
         // minus total columns with visible false
         for (const column of this.columns) {
             if (column.visible === false) {
@@ -437,7 +479,8 @@ export default class Table extends Element {
         this.sortIndicatorElements = {};
         this.removeContent('tableHeader');
         this.tableHeader = new Element()
-            .addClass(`grid grid-cols-${totalColumns} bg-gray-50 border-b border-gray-200 text-sm font-semibold text-gray-700`);
+            .addClass(`grid grid-cols-${totalColumns} bg-gray-50 border-b border-gray-200 text-sm font-semibold text-gray-700`)
+            .setStyle('grid-template-columns', `repeat(${totalColumns}, minmax(0, 1fr))`);
         ;
         for (const column of this.columns) {
             if(column.visible === false){
@@ -620,7 +663,7 @@ export default class Table extends Element {
 
     renderRows() {
         this.tableBody = new Element();
-        let totalColumns = this.columns.length + 1;
+        let totalColumns = this.columns.length + (this.viewOptions.show_row_actions ? 1 : 0);
         // minus total columns with visible false
         for (const column of this.columns) {
             if (column.visible === false) {
@@ -630,8 +673,12 @@ export default class Table extends Element {
 
         for (let i = 0; i < this.rowsFetched.length; i++) {
             let tableRow = new Element()
-                .addClass(`grid grid-cols-${totalColumns} border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer`)
+                .addClass(`grid grid-cols-${totalColumns} border-b border-gray-100 hover:bg-gray-50 transition-colors`)
+                .setStyle('grid-template-columns', `repeat(${totalColumns}, minmax(0, 1fr))`)
 ;
+            if (this.viewOptions.show_row_actions) {
+                tableRow.addClass('cursor-pointer');
+            }
             for (const column of this.columns) {
                 if(column.visible === false){
                     continue;
@@ -707,6 +754,9 @@ export default class Table extends Element {
                         break;
                     default:
                         let rowValue = this.rowsFetched[i][column.name];
+                        if (column.escape_content && rowValue != null) {
+                            rowValue = tableRow.escapeHtmlAttribute(rowValue);
+                        }
                         tableRow.addContent(
                             new Element()
                             .addClass('px-4 py-3 text-gray-800')
@@ -715,24 +765,25 @@ export default class Table extends Element {
                 }
             }
             // add action for row on far right
-            let actionButton = new Element()
-                .addClass('px-4 py-3 text-gray-500 hover:text-gray-700 cursor-pointer max-w-90')
-                .addContent(
-                    new ThreeDotsIcon()
-                        .addClass('w-5 ml-auto h-5')
-                        .onEvent('click', (e) => { 
-                            let actionMenu = new QuickActionMenu();
-                            for(const action of this.getActionsForRow(this.rowsFetched[i])){
-                                actionMenu.addAction(action.value, action.label, action.callback);
-                                actionMenu.onEvent('mouseleave', (e) => {
-                                    actionButton.removeContent('actionMenu');
-                                });
-                            }
-                            actionButton.addContent(actionMenu, 'actionMenu');
-                        })
-                )
-                ;
-            tableRow.addContent(actionButton);
+            if (this.viewOptions.show_row_actions) {
+                let actionButton = new Element()
+                    .addClass('px-4 py-3 text-gray-500 hover:text-gray-700 cursor-pointer max-w-90')
+                    .addContent(
+                        new ThreeDotsIcon()
+                            .addClass('w-5 ml-auto h-5')
+                            .onEvent('click', (e) => {
+                                let actionMenu = new QuickActionMenu();
+                                for(const action of this.getActionsForRow(this.rowsFetched[i])){
+                                    actionMenu.addAction(action.value, action.label, action.callback);
+                                    actionMenu.onEvent('mouseleave', (e) => {
+                                        actionButton.removeContent('actionMenu');
+                                    });
+                                }
+                                actionButton.addContent(actionMenu, 'actionMenu');
+                            })
+                    );
+                tableRow.addContent(actionButton);
+            }
 
             this.tableBody.addContent(tableRow);
         }
@@ -785,6 +836,9 @@ export default class Table extends Element {
      *
     */
     runRowAction(actionKey, row){
+        if (!this.viewOptions.show_row_actions) {
+            return;
+        }
         if(this.rowActions[actionKey] && typeof this.rowActions[actionKey].callback === 'function'){
             this.rowActions[actionKey].callback(row);
             return;
